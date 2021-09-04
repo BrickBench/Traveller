@@ -1,9 +1,6 @@
 [submodule "lib/sol2"]
 	path = lib/sol2
 	url = https://github.com/ThePhD/sol2
-[submodule "lib/imgui"]
-	path = lib/imgui
-	url = https://github.com/ocornut/imgui
 [submodule "lib/minhook"]
 	path = lib/minhook
 	url = https://github.com/TsudaKageyu/minhook
