@@ -1,0 +1,6 @@
+EXPORTS
+DirectInput8Create=jumpDirectInput8Create @1
+DllCanUnloadNow=jumpDllCanUnloadNow @2
+DllGetClassObject=jumpDllGetClassObject @3
+DllRegisterServer=jumpDllRegisterServer @4
+DllUnregisterServer=jumpDllUnregisterServer @5

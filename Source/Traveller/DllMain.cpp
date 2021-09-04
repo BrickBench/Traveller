@@ -1,4 +1,4 @@
-// dllmain.cpp : Defines the entry point for the DLL application.
+// DllMain.cpp : Defines the entry point for the DLL application.
 #include "pch.h"
 
 #include "InjectionManager.h"
@@ -44,7 +44,7 @@ __declspec(naked) void __stdcall jumpDllUnregisterServer() {
     }
 }
 
-void initializeDLLProxy() {
+void initializeDllProxy() {
     dinput8 = LoadLibraryA("C:\\Windows\\System32\\dinput8.dll"); 
 
     // assign addresses of functions
@@ -64,7 +64,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     {
     case DLL_PROCESS_ATTACH:
         InjectionManager::injectFunction<&ScriptingLibrary::init, 0x00401230, reinterpret_cast<void*>(0x00428b90), true>();
-        initializeDLLProxy();
+        initializeDllProxy();
     case DLL_THREAD_ATTACH:
     case DLL_THREAD_DETACH:
     case DLL_PROCESS_DETACH:

@@ -1,0 +1,9 @@
+[submodule "ThirdParty/sol2"]
+	path = ThirdParty/sol2
+	url = https://github.com/ThePhD/sol2
+[submodule "ThirdParty/imgui"]
+	path = ThirdParty/imgui
+	url = https://github.com/ocornut/imgui
+[submodule "ThirdParty/minhook"]
+	path = ThirdParty/minhook
+	url = https://github.com/TsudaKageyu/minhook
