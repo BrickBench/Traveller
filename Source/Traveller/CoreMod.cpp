@@ -10,11 +10,11 @@
 
 bool beginRender = false;
 
-std::map<std::string, std::unique_ptr<sol::load_result>> loadLuaScripts(sol::state& lua)
+std::map<std::string, std::unique_ptr<sol::table>> loadLuaScripts(sol::state& lua)
 {
     ScriptingLibrary::log("Loading scripts");
 
-    std::map <std::string, std::unique_ptr<sol::load_result>> scripts;
+    std::map <std::string, std::unique_ptr<sol::table>> scripts;
 
     lua.open_libraries(sol::lib::base);
     for (const auto& dirEntry : std::filesystem::recursive_directory_iterator("modscripts"))
@@ -22,7 +22,26 @@ std::map<std::string, std::unique_ptr<sol::load_result>> loadLuaScripts(sol::sta
         if (dirEntry.is_regular_file())
         {
             ScriptingLibrary::log("Loading script " + dirEntry.path().string());
-            scripts[dirEntry.path().string()] = std::make_unique<sol::load_result>(lua.load_file(dirEntry.path().string()));
+            auto result = lua.safe_script_file(dirEntry.path().string());
+
+            if (!result.valid()) 
+            {
+                sol::error err = result;
+                ScriptingLibrary::log("Failed to execute script " + dirEntry.path().filename().string() + ": " + std::string(err.what()));
+            }
+        	else
+            {
+                if (result.get_type() == sol::type::table)
+                {
+                    auto resultTable = result.get<sol::table>();
+                    scripts[dirEntry.path().string()] = std::make_unique<sol::table>(resultTable);
+
+                }
+        		else
+                {
+                    ScriptingLibrary::log("Script " + dirEntry.path().filename().string() + " did not return a table");
+                }
+            }
         }
     }
 
@@ -38,6 +57,7 @@ std::map <std::string, std::unique_ptr<BaseMod>> loadDllFiles()
     std::filesystem::create_directory("plugins");
     for (const auto& dirEntry : std::filesystem::recursive_directory_iterator("plugins")) {
         auto path = dirEntry.path().string();
+        if (!path.ends_with("dll")) continue;
 
         HINSTANCE temp = LoadLibraryA(path.c_str());
 
@@ -67,13 +87,51 @@ std::map <std::string, std::unique_ptr<BaseMod>> loadDllFiles()
     return mods;
 }
 
+void CoreMod::runScript(const std::string& name, const std::string& func)
+{
+    auto namespac = *this->loadedScripts[name];
+	if (namespac[func].get_type() == sol::type::function)
+	{
+        auto result = namespac[func].get<sol::function>()();
+        if (!result.valid())
+        {
+            sol::error err = result;
+            ScriptingLibrary::log("Failed to execute script " + name + ": " + std::string(err.what()));
+        }
+	}
+}
+
+void CoreMod::registerTypes()
+{
+	luaState.set_function("log", &ScriptingLibrary::log);
+
+    luaState.set_function("safeReadInt32", &MemWriteUtils::readSafeUncheckedPtr<int32_t>);
+    luaState.set_function("safeWriteInt32", &MemWriteUtils::writeSafeUncheckedPtr<int32_t>);
+    luaState.set_function("safeReadInt16", &MemWriteUtils::readSafeUncheckedPtr<int16_t>);
+    luaState.set_function("safeWriteInt16", &MemWriteUtils::writeSafeUncheckedPtr<int16_t>);
+    luaState.set_function("safeReadInt8", &MemWriteUtils::readSafeUncheckedPtr<int8_t>);
+    luaState.set_function("safeWriteInt8", &MemWriteUtils::writeSafeUncheckedPtr<int8_t>);
+
+	luaState.set_function("getCurrentWorld", &getCurrentWorld);
+    
+	luaState.new_usertype<WORLDINFO_s>("WORLDINFO_s",
+		"name", &WORLDINFO_s::name,
+		"directory", &WORLDINFO_s::directory);
+    
+	luaState.new_usertype<nuvec_s>("nuvec_s",
+		"x", &nuvec_s::x,
+		"y", &nuvec_s::y,
+		"z", &nuvec_s::z);
+
+    luaState.
+ }
+
 void CoreMod::readConsoleStream()
 {
     while (true)
     {
         std::string line;
-        std::cin >> line;
-        std::cout << std::endl;
+        std::getline(std::cin, line);
 
         processConsoleScript(line);
     }
@@ -95,15 +153,20 @@ void CoreMod::earlyInit()
 {
     ScriptingLibrary::currentModule = this->getName();
 
+    registerTypes();
     this->loadedMods = loadDllFiles();
     this->loadedScripts = loadLuaScripts(luaState);
-
-    
 
     for (auto& [name, mod] : loadedMods)
     {
         ScriptingLibrary::currentModule = name;
         mod->earlyInit();
+    }
+
+    for (auto& [name, script] : loadedScripts)
+    {
+        ScriptingLibrary::currentModule = name;
+        runScript(name, "earlyInit");
     }
 }
 
@@ -121,6 +184,12 @@ void CoreMod::lateInit()
         mod->lateInit();
     }
 
+    for (auto& [name, script] : loadedScripts)
+    {
+        ScriptingLibrary::currentModule = name;
+        runScript(name, "lateInit");
+    }
+
     beginRender = true;
 }
 
@@ -131,6 +200,12 @@ void CoreMod::earlyUpdate(double delta)
         ScriptingLibrary::currentModule = name;
         mod->earlyUpdate(delta);
     }
+
+    for (auto& [name, script] : loadedScripts)
+    {
+        ScriptingLibrary::currentModule = name;
+        runScript(name, "earlyUpdate");
+    }
 }
 
 void CoreMod::earlyRender()
@@ -140,17 +215,28 @@ void CoreMod::earlyRender()
         ScriptingLibrary::currentModule = name;
         mod->earlyRender();
     }
+
+    for (auto& [name, script] : loadedScripts)
+    {
+        ScriptingLibrary::currentModule = name;
+        runScript(name, "earlyRender");
+    }
 }
 
 void CoreMod::lateRender()
 {
-
    // if (!beginRender) return;
 
     for (auto& [name, mod] : loadedMods)
     {
         ScriptingLibrary::currentModule = name;
         mod->lateRender();
+    }
+
+    for (auto& [name, script] : loadedScripts)
+    {
+        ScriptingLibrary::currentModule = name;
+        runScript(name, "lateRender");
     }
 
   //  ScriptingLibrary::currentModule = "GUIManager";

@@ -14,32 +14,23 @@ namespace InjectionManager
 		}
 	}
 
-	template <void(*F)(), void* TargetFunc, bool CallPost>
+	template <void(*F)(), void* TargetFunc>
 	void callTemplate()
 	{
 		typedef void (*fptr)();
-		auto oldFunc = reinterpret_cast<fptr>(reinterpret_cast<long>(TargetFunc));
+		auto oldFunc = reinterpret_cast<fptr>(reinterpret_cast<uintptr_t>(TargetFunc));
 
-		if constexpr(CallPost)
-		{
-			(*F)();
-			(*oldFunc)();
-
-		}
-		else
-		{
-			(*F)();
-			(*oldFunc)();
-		}
+		(*F)();
+		(*oldFunc)();
 	}
 
-	template <void(*NewFunc)(), int CallInstr, void* TargetFunc, bool CallPost>
+	template <void(*NewFunc)(), uintptr_t CallInstr, void* TargetFunc>
 	TTSLLib void injectFunction()
 	{
 		constexpr int replacementOffset = CallInstr + 1;
-		auto templateFuncPtr = &callTemplate<NewFunc, TargetFunc, CallPost>;
+		auto templateFuncPtr = &callTemplate<NewFunc, TargetFunc>;
 
-		int reljmp = reinterpret_cast<int>(templateFuncPtr) - (CallInstr + 5);
+		auto reljmp = reinterpret_cast<uintptr_t>(templateFuncPtr) - (CallInstr + 5);
 
 		auto last = MemWriteUtils::setMemoryPerms(CallInstr, 8, PAGE_EXECUTE_READWRITE);
 		*reinterpret_cast<int*>(replacementOffset) = reljmp;

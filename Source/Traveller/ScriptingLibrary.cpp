@@ -41,13 +41,6 @@ namespace ScriptingLibrary
         std::wclog.clear();
         std::wcerr.clear();
         std::wcin.clear();
-
-        auto result = SetConsoleMode(hConIn, ENABLE_QUICK_EDIT_MODE | ENABLE_EXTENDED_FLAGS | ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
-
-        if (!result)
-        {
-            log("Failed to enable console input");
-        }
     }
 
     void earlyUpdate()
@@ -92,13 +85,11 @@ namespace ScriptingLibrary
         log("Loaded TTScriptingLibrary");
 
         InjectionManager::initialize();
-        //InjectionManager::replaceDllFunction("user32.dll", "SetCursor", &ignoreCursor);
-        //InjectionManager::replaceDllFunction("user32.dll", "SetCursorPos", &ignoreCursorPos);
 
-        InjectionManager::injectFunction<&preWindowInit, 0x006dbf4c, reinterpret_cast<void*>(0x006d3150), true>();
-        InjectionManager::injectFunction<&lateInit, 0x004931d4, reinterpret_cast<void*>(0x00549430), true>();
-        InjectionManager::injectFunction<&lateUpdate, 0x00493533, reinterpret_cast<void*>(0x00548f00), true>();
-        InjectionManager::injectFunction<&lateRender, 0x0060b569, reinterpret_cast<void*>(0x006e4a10), true>();
+        InjectionManager::injectFunction<&preWindowInit, 0x006dbf4c, reinterpret_cast<void*>(0x006d3150)>();
+        InjectionManager::injectFunction<&lateInit, 0x004931d4, reinterpret_cast<void*>(0x00549430)>();
+        InjectionManager::injectFunction<&lateUpdate, 0x00493533, reinterpret_cast<void*>(0x00548f00)>();
+        InjectionManager::injectFunction<&lateRender, 0x0060b569, reinterpret_cast<void*>(0x006e4a10)>();
 
         coreMod.earlyInit();
     }

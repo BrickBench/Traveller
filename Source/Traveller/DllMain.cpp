@@ -63,7 +63,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     switch (ul_reason_for_call)
     {
     case DLL_PROCESS_ATTACH:
-        InjectionManager::injectFunction<&ScriptingLibrary::init, 0x00401230, reinterpret_cast<void*>(0x00428b90), true>();
+        InjectionManager::injectFunction<&ScriptingLibrary::init, 0x00401230, reinterpret_cast<void*>(0x00428b90)>();
         initializeDllProxy();
     case DLL_THREAD_ATTACH:
     case DLL_THREAD_DETACH:
