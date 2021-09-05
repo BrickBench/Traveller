@@ -74,3 +74,4 @@ target_link_libraries(dinput8 PUBLIC ${TRAVELLER_LINK_LIBRARIES})
 
 # TODO: Add way to configure this
 install(TARGETS dinput8 DESTINATION "${TRAVELLER_INSTALL_DIRECTORY}")
+install(FILES "${CMAKE_SOURCE_DIR}/ThirdParty/fennel.lua" DESTINATION "${TRAVELLER_INSTALL_DIRECTORY}")

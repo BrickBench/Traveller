@@ -16,6 +16,7 @@ bool beginRender = false;
 std::map<std::string, std::unique_ptr<sol::table>> loadLuaScripts()
 {
     ScriptingLibrary::log("Loading scripts");
+    std::filesystem::create_directory("modscripts");
 
     std::map <std::string, std::unique_ptr<sol::table>> scripts;
 
@@ -24,13 +25,16 @@ std::map<std::string, std::unique_ptr<sol::table>> loadLuaScripts()
     {
         if (dirEntry.is_regular_file())
         {
-            ScriptingLibrary::log("Loading script " + dirEntry.path().string());
-            auto result = lua.safe_script_file(dirEntry.path().string());
+            auto file = dirEntry.path().parent_path().string() + "." + dirEntry.path().stem().string();
+            std::replace(file.begin(), file.end(), '\\', '/');
+
+            ScriptingLibrary::log("Loading script " + file);
+            auto result = lua.safe_script("require(\"" + file + "\")");
 
             if (!result.valid()) 
             {
                 sol::error err = result;
-                ScriptingLibrary::log("Failed to execute script " + dirEntry.path().filename().string() + ": " + std::string(err.what()));
+                ScriptingLibrary::log("Failed to execute script " + file + ": " + std::string(err.what()));
             }
         	else
             {
@@ -38,11 +42,10 @@ std::map<std::string, std::unique_ptr<sol::table>> loadLuaScripts()
                 {
                     auto resultTable = result.get<sol::table>();
                     scripts[dirEntry.path().string()] = std::make_unique<sol::table>(resultTable);
-
                 }
         		else
                 {
-                    ScriptingLibrary::log("Script " + dirEntry.path().filename().string() + " did not return a table");
+                    ScriptingLibrary::log("Script " + file + " did not return a table");
                 }
             }
         }
@@ -142,17 +145,15 @@ void readConsoleStream()
 
         processConsoleScript(line);
     }
-
-    //lua.script("fennel.repl()");
 }
 
 void loadLuaEnvironment()
 {
-    lua.open_libraries(sol::lib::base, sol::lib::package,
+    lua.open_libraries(sol::lib::base, sol::lib::package, sol::lib::io,
         sol::lib::table, sol::lib::string, sol::lib::math);
 
-   // lua["fennel"] = lua.script_file("fennel.lua");
-   // lua.script("table.insert(package.loaders or package.searchers, fennel.searcher)");
+   lua["fennel"] = lua.script_file("fennel.lua");
+   lua.script("table.insert(package.loaders or package.searchers, fennel.searcher)");
 }
 
 void CoreMod::earlyInit()
