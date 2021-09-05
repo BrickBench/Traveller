@@ -11,6 +11,7 @@
 #include "GuiManager.h"
 #include "InjectionManager.h"
 #include "InputHandler.h"
+#include "LuaRegistry.h"
 #include "sol/sol.hpp"
 
 namespace ScriptingLibrary
@@ -89,7 +90,7 @@ namespace ScriptingLibrary
         InjectionManager::injectFunction<&preWindowInit, 0x006dbf4c, reinterpret_cast<void*>(0x006d3150)>();
         InjectionManager::injectFunction<&lateInit, 0x004931d4, reinterpret_cast<void*>(0x00549430)>();
         InjectionManager::injectFunction<&lateUpdate, 0x00493533, reinterpret_cast<void*>(0x00548f00)>();
-        InjectionManager::injectFunction<&lateRender, 0x0060b569, reinterpret_cast<void*>(0x006e4a10)>();
+        InjectionManager::injectFunction<&lateRender, 0x0060b569 , reinterpret_cast<void*>(0x006e4a10)>();
 
         coreMod.earlyInit();
     }
@@ -105,4 +106,10 @@ namespace ScriptingLibrary
         currentModule = "InjectionEngine";
         earlyInit();
 	}
+}
+
+
+TRAVELLER_API_REGISTRY()
+{
+    lua.set_function("log", ScriptingLibrary::log);
 }

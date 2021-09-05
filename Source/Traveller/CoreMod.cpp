@@ -3,14 +3,17 @@
 #include <filesystem>
 #include <thread>
 
-#include "GuiManager.h"
 #include "ScriptingLibrary.h"
 #include "InjectionManager.h"
+#include "LuaRegistry.h"
 #include "nuworld.h"
+#include "nuscene.h"
+#include "nuutil.h"
 
 bool beginRender = false;
 
-std::map<std::string, std::unique_ptr<sol::table>> loadLuaScripts(sol::state& lua)
+
+std::map<std::string, std::unique_ptr<sol::table>> loadLuaScripts()
 {
     ScriptingLibrary::log("Loading scripts");
 
@@ -101,32 +104,36 @@ void CoreMod::runScript(const std::string& name, const std::string& func)
 	}
 }
 
-void CoreMod::registerTypes()
+void registerTypes()
 {
-	luaState.set_function("log", &ScriptingLibrary::log);
-
-    luaState.set_function("safeReadInt32", &MemWriteUtils::readSafeUncheckedPtr<int32_t>);
-    luaState.set_function("safeWriteInt32", &MemWriteUtils::writeSafeUncheckedPtr<int32_t>);
-    luaState.set_function("safeReadInt16", &MemWriteUtils::readSafeUncheckedPtr<int16_t>);
-    luaState.set_function("safeWriteInt16", &MemWriteUtils::writeSafeUncheckedPtr<int16_t>);
-    luaState.set_function("safeReadInt8", &MemWriteUtils::readSafeUncheckedPtr<int8_t>);
-    luaState.set_function("safeWriteInt8", &MemWriteUtils::writeSafeUncheckedPtr<int8_t>);
-
-	luaState.set_function("getCurrentWorld", &getCurrentWorld);
+    lua.set_function("getCurrentWorld", &getCurrentWorld);
     
-	luaState.new_usertype<WORLDINFO_s>("WORLDINFO_s",
+    lua.new_usertype<WORLDINFO_s>("WORLDINFO_s",
 		"name", &WORLDINFO_s::name,
 		"directory", &WORLDINFO_s::directory);
     
-	luaState.new_usertype<nuvec_s>("nuvec_s",
+    lua.new_usertype<nuvec_s>("nuvec_s",
 		"x", &nuvec_s::x,
 		"y", &nuvec_s::y,
 		"z", &nuvec_s::z);
-
-    luaState.
  }
 
-void CoreMod::readConsoleStream()
+
+void processConsoleScript(const std::string& script)
+{
+    auto result = lua.safe_script("_scriptResult = fennel.eval(\"" + script + "\")", sol::script_pass_on_error);
+
+    if (!result.valid()) {
+        sol::error err = result;
+        ScriptingLibrary::log("Failed to execute script: " + std::string(err.what()));
+    }
+	else
+    {
+        lua.script("print(_scriptResult)");
+    }
+}
+
+void readConsoleStream()
 {
     while (true)
     {
@@ -135,27 +142,27 @@ void CoreMod::readConsoleStream()
 
         processConsoleScript(line);
     }
-	
+
+    //lua.script("fennel.repl()");
 }
 
-void CoreMod::processConsoleScript(const std::string& script)
+void loadLuaEnvironment()
 {
-    auto result = luaState.safe_script(script, sol::script_pass_on_error);
+    lua.open_libraries(sol::lib::base, sol::lib::package,
+        sol::lib::table, sol::lib::string, sol::lib::math);
 
-    if (!result.valid()) {
-        sol::error err = result;
-        ScriptingLibrary::log("Failed to execute script: " + std::string(err.what()));
-    }
+   // lua["fennel"] = lua.script_file("fennel.lua");
+   // lua.script("table.insert(package.loaders or package.searchers, fennel.searcher)");
 }
-
 
 void CoreMod::earlyInit()
 {
     ScriptingLibrary::currentModule = this->getName();
 
+    loadLuaEnvironment();
     registerTypes();
     this->loadedMods = loadDllFiles();
-    this->loadedScripts = loadLuaScripts(luaState);
+    this->loadedScripts = loadLuaScripts();
 
     for (auto& [name, mod] : loadedMods)
     {
@@ -175,7 +182,7 @@ void CoreMod::lateInit()
     ScriptingLibrary::currentModule = "GUIManager";
    // Gui::initializeImGui();
 
-    auto consoleThread = std::thread(&CoreMod::readConsoleStream, this);
+    auto consoleThread = std::thread(&readConsoleStream);
     consoleThread.detach();
 
     for (auto& [name, mod] : loadedMods)

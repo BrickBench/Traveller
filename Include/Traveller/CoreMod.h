@@ -10,12 +10,8 @@ private:
 	std::map<std::string, std::unique_ptr<BaseMod>> loadedMods;
 	std::map<std::string, std::unique_ptr<sol::table>> loadedScripts;
 
-	sol::state luaState;
 
 	void runScript(const std::string& name, const std::string& func);
-	void registerTypes();
-	void readConsoleStream();
-	void processConsoleScript(const std::string& script);
 
 public:
 	std::string getName() override
