@@ -49,7 +49,6 @@ struct nuhspecial_s
 	FileSpecialObject_* object2;
 };
 
-
 struct nugscn_s
 {
 	int* textureIndices;
