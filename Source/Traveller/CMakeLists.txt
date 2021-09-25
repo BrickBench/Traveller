@@ -1,16 +1,5 @@
-set(TRAVELLER_SOURCE_FILES
-	"${CMAKE_CURRENT_SOURCE_DIR}/DllMain.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/CoreMod.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/GuiManager.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/ImGUIManager.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/InjectionManager.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/InputHandler.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/MemWriteUtils.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/ScriptingLibrary.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/dinput8.def"
-	"${CMAKE_SOURCE_DIR}/ThirdParty/imgui/backends/imgui_impl_dx9.cpp"
-  "${CMAKE_SOURCE_DIR}/ThirdParty/imgui/backends/imgui_impl_win32.cpp"
+set(LUA_SOURCE_FILES
+ "${CMAKE_SOURCE_DIR}/ThirdParty/imgui/backends/imgui_impl_win32.cpp"
   "${CMAKE_SOURCE_DIR}/ThirdParty/imgui/imgui.cpp"
   "${CMAKE_SOURCE_DIR}/ThirdParty/imgui/imgui_demo.cpp"
   "${CMAKE_SOURCE_DIR}/ThirdParty/imgui/imgui_draw.cpp"
@@ -51,6 +40,22 @@ set(TRAVELLER_SOURCE_FILES
   "${CMAKE_SOURCE_DIR}/ThirdParty/lua-5.4.3/src/lvm.c"
   "${CMAKE_SOURCE_DIR}/ThirdParty/lua-5.4.3/src/lzio.c")
 
+  SET_SOURCE_FILES_PROPERTIES(${LUA_SOURCE_FILES} PROPERTIES LANGUAGE CXX)
+
+set(TRAVELLER_SOURCE_FILES
+	"${CMAKE_CURRENT_SOURCE_DIR}/DllMain.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/CoreMod.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/GuiManager.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/InjectionManager.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/InputHandler.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/MemWriteUtils.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/ScriptingLibrary.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/dinput8.def"
+	"${CMAKE_SOURCE_DIR}/ThirdParty/imgui/backends/imgui_impl_dx9.cpp"
+	${LUA_SOURCE_FILES}
+ )
+
 set(TRAVELLER_INCLUDE_DIRECTORIES
 	"${CMAKE_SOURCE_DIR}/Include/Traveller"
 	"${CMAKE_SOURCE_DIR}/ThirdParty/imgui"
@@ -66,7 +71,7 @@ set(TRAVELLER_LINK_LIBRARIES
 
 add_library(dinput8 SHARED ${TRAVELLER_SOURCE_FILES})
 
-target_compile_definitions(dinput8 PUBLIC WIN32_LEAN_AND_MEAN TTSLLibBuild)
+target_compile_definitions(dinput8 PUBLIC WIN32_LEAN_AND_MEAN TTSLLibBuild SOL_USING_CXX_LUA=1 SOL_EXCEPTIONS_SAFE_PROPAGATION)
 
 target_include_directories(dinput8 PUBLIC ${TRAVELLER_INCLUDE_DIRECTORIES})
 

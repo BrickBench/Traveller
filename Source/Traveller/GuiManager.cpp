@@ -1,18 +1,23 @@
 #include "pch.h"
 #include "GuiManager.h"
+#include "ScriptingLibrary.h"
+#include "nurender.h"
 
 #include <imgui_impl_dx9.h>
 #include <imgui_impl_win32.h>
 #include <iostream>
 
-#include "ScriptingLibrary.h"
+#include "CoreMod.h"
+
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+static bool showConsole = false;
 
 struct GameConsole
 {
     char                  InputBuf[256];
-    ImVector<char*>       Items;
+    std::vector<std::string> Items;
     ImVector<const char*> Commands;
     ImVector<char*>       History;
     int                   HistoryPos;    
@@ -32,7 +37,6 @@ struct GameConsole
         Commands.push_back("CLASSIFY");
         AutoScroll = true;
         ScrollToBottom = false;
-        AddLog("Welcome to Dear ImGui!");
     }
     ~GameConsole()
     {
@@ -48,21 +52,12 @@ struct GameConsole
 
     void ClearLog()
     {
-        for (int i = 0; i < Items.Size; i++)
-            free(Items[i]);
         Items.clear();
     }
 
-    void AddLog(const char* fmt, ...) IM_FMTARGS(2)
+    void AddLog(const std::string& log) IM_FMTARGS(2)
     {
-        // FIXME-OPT
-        char buf[1024];
-        va_list args;
-        va_start(args, fmt);
-        vsnprintf(buf, IM_ARRAYSIZE(buf), fmt, args);
-        buf[IM_ARRAYSIZE(buf) - 1] = 0;
-        va_end(args);
-        Items.push_back(Strdup(buf));
+        Items.push_back(log);
     }
 
     void Draw(const char* title, bool* p_open)
@@ -82,9 +77,6 @@ struct GameConsole
         }
 
 
-        if (ImGui::SmallButton("Add Debug Text")) { AddLog("%d some text", Items.Size); AddLog("some more text"); AddLog("display very important message here!"); }
-        ImGui::SameLine();
-        if (ImGui::SmallButton("Add Debug Error")) { AddLog("[error] something went wrong"); }
         ImGui::SameLine();
         if (ImGui::SmallButton("Clear")) { ClearLog(); }
         ImGui::SameLine();
@@ -104,20 +96,19 @@ struct GameConsole
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 1)); // Tighten spacing
         if (copy_to_clipboard)
             ImGui::LogToClipboard();
-        for (int i = 0; i < Items.Size; i++)
+        for (auto& str : Items)
         {
-            const char* item = Items[i];
-            if (!Filter.PassFilter(item))
+            if (!Filter.PassFilter(str.c_str()))
                 continue;
 
 
             ImVec4 color;
             bool has_color = false;
-            if (strstr(item, "[error]")) { color = ImVec4(1.0f, 0.4f, 0.4f, 1.0f); has_color = true; }
-            else if (strncmp(item, "# ", 2) == 0) { color = ImVec4(1.0f, 0.8f, 0.6f, 1.0f); has_color = true; }
+            if (strstr(str.c_str(), "[error]")) { color = ImVec4(1.0f, 0.4f, 0.4f, 1.0f); has_color = true; }
+            else if (strncmp(str.c_str(), "# ", 2) == 0) { color = ImVec4(1.0f, 0.8f, 0.6f, 1.0f); has_color = true; }
             if (has_color)
                 ImGui::PushStyleColor(ImGuiCol_Text, color);
-            ImGui::TextUnformatted(item);
+            ImGui::TextUnformatted(str.c_str());
             if (has_color)
                 ImGui::PopStyleColor();
         }
@@ -133,8 +124,8 @@ struct GameConsole
         ImGui::Separator();
 
         bool reclaim_focus = false;
-        ImGuiInputTextFlags input_text_flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackCompletion | ImGuiInputTextFlags_CallbackHistory;
-        if (ImGui::InputText("Input", InputBuf, IM_ARRAYSIZE(InputBuf), input_text_flags, &TextEditCallbackStub, (void*)this))
+        ImGuiInputTextFlags input_text_flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackHistory;
+        if (ImGui::InputText("Input", InputBuf, IM_ARRAYSIZE(InputBuf), input_text_flags, &TextEditCallbackStub, this))
         {
             char* s = InputBuf;
             Strtrim(s);
@@ -153,7 +144,9 @@ struct GameConsole
 
     void ExecCommand(const char* command_line)
     {
-        AddLog("# %s\n", command_line);
+        auto str = std::string(command_line);
+
+        AddLog("# " + str + "\n");
 
         HistoryPos = -1;
         for (int i = History.Size - 1; i >= 0; i--)
@@ -165,25 +158,21 @@ struct GameConsole
             }
         History.push_back(Strdup(command_line));
 
-        if (Stricmp(command_line, "CLEAR") == 0)
+        if (str == "clear" || str == "cls")
         {
             ClearLog();
         }
-        else if (Stricmp(command_line, "HELP") == 0)
+    	else if (str == "fennel")
+    	{
+            CoreMod::useFennelInterpreter = true;
+    	}
+        else if (str == "lua")
         {
-            AddLog("Commands:");
-            for (int i = 0; i < Commands.Size; i++)
-                AddLog("- %s", Commands[i]);
-        }
-        else if (Stricmp(command_line, "HISTORY") == 0)
-        {
-            int first = History.Size - 10;
-            for (int i = first > 0 ? first : 0; i < History.Size; i++)
-                AddLog("%3d: %s\n", i, History[i]);
+            CoreMod::useFennelInterpreter = false;
         }
         else
         {
-            AddLog("Unknown command: '%s'\n", command_line);
+            CoreMod::execScript(str);
         }
 
         ScrollToBottom = true;
@@ -195,7 +184,7 @@ struct GameConsole
         return console->TextEditCallback(data);
     }
 
-    int     TextEditCallback(ImGuiInputTextCallbackData* data)
+    int TextEditCallback(ImGuiInputTextCallbackData* data)
     {
         switch (data->EventFlag)
         {
@@ -218,7 +207,7 @@ struct GameConsole
 
             if (candidates.Size == 0)
             {
-                AddLog("No match for \"%.*s\"!\n", (int)(word_end - word_start), word_start);
+                //AddLog("No match for \"%.*s\"!\n", (int)(word_end - word_start), word_start);
             }
             else if (candidates.Size == 1)
             {
@@ -250,8 +239,8 @@ struct GameConsole
                 }
 
                 AddLog("Possible matches:\n");
-                for (int i = 0; i < candidates.Size; i++)
-                    AddLog("- %s\n", candidates[i]);
+                //for (int i = 0; i < candidates.Size; i++)
+                    //AddLog("- %s\n", candidates[i]);
             }
 
             break;
@@ -314,12 +303,15 @@ void Gui::initializeImGui()
     started = true;
 }
 
+void Gui::writeToConsole(const std::string& value)
+{
+    console.AddLog(value);
+}
+
 void Gui::startRender()
 {
-    auto hwnd = reinterpret_cast<HWND*>(0x00924884);
-
     MSG msg;
-    while (::PeekMessage(&msg, *hwnd, 0U, 0U, PM_REMOVE))
+    while (::PeekMessage(&msg, *_HWND, 0U, 0U, PM_REMOVE))
     {
         ::TranslateMessage(&msg);
         ::DispatchMessage(&msg);
@@ -332,10 +324,9 @@ void Gui::startRender()
 
     ImGui::GetMainViewport()->Size = ImVec2(2560, 1440);
     ImGui::GetMainViewport()->Pos = ImVec2(0, 0);
-    ImGui::SetNextWindowPos(ImVec2(200, 200));
+    ImGui::SetNextWindowPos(ImVec2(20, 20));
 
-    auto fa = true;
-    console.Draw("Console", &fa);
+    if (showConsole) console.Draw("Console", &showConsole);
 }
 
 void Gui::endRender(){
@@ -347,11 +338,19 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     auto io = ImGui::GetIO();
 
-    //std::cout << msg << std::endl;
-
     if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
     {
         return true;
+    }
+
+    if (msg == WM_KEYDOWN || msg == WM_KEYUP)
+    {
+	    ScriptingLibrary::onKeyboardInput(msg, wParam);
+
+        if (msg == WM_KEYDOWN && wParam == VK_F8)
+        {
+            showConsole = !showConsole;
+        }
     }
 
     if (msg >= WM_KEYFIRST && msg <= WM_KEYLAST && io.WantCaptureKeyboard)

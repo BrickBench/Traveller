@@ -57,6 +57,8 @@ public:
     /// Renders the ImGUI UI
     /// </summary>
     virtual void drawUI() {}
+
+    virtual void onKeyboardInput(int message, int keyCode) {}
 };
 
 extern "C" {

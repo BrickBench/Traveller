@@ -7,7 +7,7 @@ namespace MemWriteUtils
 	TTSLLib int setMemoryPerms(uintptr_t address, int size, int perms);
 
 	template <typename T>
-	T readSafeUncheckedPtr(uintptr_t address)
+	TTSLLib T readSafeUncheckedPtr(uintptr_t address)
 	{
 		return readSafe<T>(reinterpret_cast<T*>(address));
 	}
@@ -15,7 +15,7 @@ namespace MemWriteUtils
 	template <typename T>
 	TTSLLib T readSafe(T* address)
 	{
-		auto lastPerms = setMemoryPerms(reinterpret_cast<uintptr_t>(address), sizeof(T), PAGE_READWRITE);
+		const auto lastPerms = setMemoryPerms(reinterpret_cast<uintptr_t>(address), sizeof(T), PAGE_READWRITE);
 		T value = *address;
 		setMemoryPerms(reinterpret_cast<uintptr_t>(address), sizeof(T), lastPerms);
 
@@ -23,7 +23,7 @@ namespace MemWriteUtils
 	}
 
 	template <typename T>
-	void writeSafeUncheckedPtr(uintptr_t address, const T & value)
+	TTSLLib void writeSafeUncheckedPtr(uintptr_t address, const T & value)
 	{
 		writeSafe<T>(reinterpret_cast<T*>(address), value);
 	}
@@ -31,7 +31,7 @@ namespace MemWriteUtils
 	template <typename T>
 	TTSLLib void writeSafe(T* address, const T& value)
 	{
-		auto lastPerms = setMemoryPerms(reinterpret_cast<uintptr_t>(address), sizeof(T), PAGE_READWRITE);
+		const auto lastPerms = setMemoryPerms(reinterpret_cast<uintptr_t>(address), sizeof(T), PAGE_READWRITE);
 		*address = value;
 		setMemoryPerms(reinterpret_cast<uintptr_t>(address), sizeof(T), lastPerms);
 	}

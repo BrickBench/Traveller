@@ -7,13 +7,14 @@
 class CoreMod : public BaseMod
 {
 private:
-	std::map<std::string, std::unique_ptr<BaseMod>> loadedMods;
 	std::map<std::string, std::unique_ptr<sol::table>> loadedScripts;
 
 
 	void runScript(const std::string& name, const std::string& func);
 
 public:
+	inline static bool useFennelInterpreter = false;
+
 	std::string getName() override
 	{
 		return "CoreMod";
@@ -29,6 +30,8 @@ public:
 
 	void lateRender() override;
 
-	void drawUI() override;
+	void onKeyboardInput(int message, int keyCode) override;
+
+	static void execScript(const std::string& script);
 };
 

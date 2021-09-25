@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include <vector>
 
 namespace Gui
@@ -9,5 +10,7 @@ namespace Gui
 	void endRender();
 
 	void initializeImGui();
+
+	void writeToConsole(const std::string& value);
 };
 

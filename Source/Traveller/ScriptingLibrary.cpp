@@ -16,8 +16,10 @@
 
 namespace ScriptingLibrary
 {
-    CoreMod coreMod;
+    std::map<std::string, std::shared_ptr<BaseMod>> loadedMods;
+
     auto currentTime = std::chrono::high_resolution_clock::now();
+    bool beginRender = false;
 
     void openConsole() {
         AllocConsole();
@@ -44,13 +46,55 @@ namespace ScriptingLibrary
         std::wcin.clear();
     }
 
+
+    std::map <std::string, std::shared_ptr<BaseMod>> loadDllFiles()
+    {
+        std::map <std::string, std::shared_ptr<BaseMod>> mods;
+        ScriptingLibrary::log("Loading mods");
+        std::filesystem::create_directory("plugins");
+        for (const auto& dirEntry : std::filesystem::recursive_directory_iterator("plugins")) {
+            auto path = dirEntry.path().string();
+            if (!path.ends_with("dll")) continue;
+
+            HINSTANCE temp = LoadLibraryA(path.c_str());
+
+            if (!temp) {
+                ScriptingLibrary::log("Couldn't load library " + path);
+                continue;
+            }
+
+            ScriptingLibrary::log("Loading library " + path);
+
+            typedef BaseMod* (__cdecl* ModGetter)();
+
+            auto address = GetProcAddress(temp, "getModInstance");
+
+            if (address != nullptr)
+            {
+                auto objFunc = reinterpret_cast<ModGetter>(address);
+                auto mod = objFunc();
+
+                ScriptingLibrary::log("Loaded mod " + mod->getName());
+
+                mods[mod->getName()] = std::shared_ptr<BaseMod>(mod);
+            }
+        }
+        ScriptingLibrary::log("Loaded " + std::to_string(mods.size()) + " mods.");
+
+        return mods;
+    }
+
+
     void earlyUpdate()
     {
         auto newTime = std::chrono::high_resolution_clock::now();
         auto delta = std::chrono::duration<double, std::milli>(newTime - currentTime).count();
 
-        coreMod.earlyUpdate(delta);
-
+        for (auto& [name, mod] : loadedMods)
+        {
+            ScriptingLibrary::currentModule = name;
+            mod->earlyUpdate(delta);
+        }
         currentTime = newTime;
     }
 
@@ -61,27 +105,56 @@ namespace ScriptingLibrary
 
     void earlyRender()
     {
-        coreMod.earlyRender();
+        for (auto& [name, mod] : loadedMods)
+        {
+            ScriptingLibrary::currentModule = name;
+            mod->earlyRender();
+        }
     }
 
     void lateRender()
     {
-        coreMod.lateRender();
+        if (!beginRender) return;
+
+        for (auto& [name, mod] : loadedMods)
+        {
+            ScriptingLibrary::currentModule = name;
+            mod->lateRender();
+        }
+
+        ScriptingLibrary::currentModule = "GUIManager";
+        Gui::startRender();
+
+        ScriptingLibrary::currentModule = "GUIManager";
+        Gui::endRender();
     }
 
     void preWindowInit()
     {
+
     }
 
 
     void lateInit()
     {
-        coreMod.lateInit();
+        ScriptingLibrary::currentModule = "GUIManager";
+        Gui::initializeImGui();
+        beginRender = true;
+
+        for (auto& [name, mod] : loadedMods)
+        {
+            ScriptingLibrary::currentModule = name;
+            mod->lateInit();
+        }
     }
 
     void earlyInit()
     {
-        openConsole();
+        //openConsole();
+
+        loadedMods = loadDllFiles();
+        loadedMods["CoreMod"] = std::make_shared<CoreMod>();
+
 
         log("Loaded TTScriptingLibrary");
 
@@ -92,13 +165,23 @@ namespace ScriptingLibrary
         InjectionManager::injectFunction<&lateUpdate, 0x00493533, reinterpret_cast<void*>(0x00548f00)>();
         InjectionManager::injectFunction<&lateRender, 0x0060b569 , reinterpret_cast<void*>(0x006e4a10)>();
 
-        coreMod.earlyInit();
+        for (auto& [name, mod] : loadedMods)
+        {
+            ScriptingLibrary::currentModule = name;
+            mod->earlyInit();
+        }
+
     }
 
+    void acceptInput(int message, int keyCode)
+    {
+	    
+    }
 
     void log(const std::string& str)
     {
         std::cout << currentModule << ": " << str << std::endl;
+        Gui::writeToConsole(currentModule + ": " + str + "\n");
     }
 
     void init()
@@ -106,8 +189,21 @@ namespace ScriptingLibrary
         currentModule = "InjectionEngine";
         earlyInit();
 	}
-}
 
+    void onKeyboardInput(int message, int keyCode)
+    {
+        for (auto& [name, mod] : loadedMods)
+        {
+            ScriptingLibrary::currentModule = name;
+            mod->onKeyboardInput(message, keyCode);
+        }
+    }
+
+    std::shared_ptr<BaseMod> getModByName(const std::string& name)
+    {
+        return loadedMods[name];
+    }
+}
 
 TRAVELLER_API_REGISTRY()
 {

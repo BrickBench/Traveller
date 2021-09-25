@@ -7,7 +7,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/build")
 
-set(TRAVELLER_INSTALL_DIRECTORY "C:/Program Files (x86)/Steam/steamapps/common/Lego Star Wars Saga/" CACHE STRING "The directory that CMake will install to.")
+set(LUA_SOURCE "lua-5.4.3")
+set(TRAVELLER_INSTALL_DIRECTORY "F:/LEGO Files/LEGO Star Wars - Copy/" CACHE STRING "The directory that CMake will install to.")
 
 # Third Party
 add_subdirectory("ThirdParty")

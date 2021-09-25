@@ -1,4 +1,6 @@
 #pragma once
+
+#include "nuutil.h"
 #include "nuscene.h"
 #include "pch.h"
 
@@ -6,6 +8,8 @@ struct LEVELDATA_s
 {
 	int e;
 };
+
+typedef void* GameObject_s;
 
 struct WORLDINFO_s
 {
@@ -24,7 +28,10 @@ struct WORLDINFO_s
 	nugscn_s* sceneData;
 };
 
+TRAVELLER_REGISTER_RAW_GLOBAL(0x0093d810, GameObject_s*, _Player);
+TRAVELLER_REGISTER_RAW_GLOBAL(0x00802c54, WORLDINFO_s*, _WORLD);
+
 TTSLLib inline WORLDINFO_s* getCurrentWorld()
 {
-	return *reinterpret_cast<WORLDINFO_s**>(0x00802c54);
+	return *_WORLD;
 }
