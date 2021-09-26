@@ -32,9 +32,8 @@ static BOOL(__stdcall *oldShowWindow)(HWND, int);
 
 static bool hasPatchedResolution = false;
 
-void CD3DCore_BuildDeviceFromResolution_PatchModesFirst(void* d3dCore)
+void patchModes(void* d3dCore)
 {
-
 	int oldModeCount = *reinterpret_cast<int*>(reinterpret_cast<int>(d3dCore) + 0x618);
 	D3DDISPLAYMODE* oldModes = *reinterpret_cast<D3DDISPLAYMODE**>(reinterpret_cast<int>(d3dCore) + 0x61c);
 	auto lastMode = oldModes[oldModeCount - 1];
@@ -44,37 +43,35 @@ void CD3DCore_BuildDeviceFromResolution_PatchModesFirst(void* d3dCore)
 	auto targetColorFormat = lastMode.Format;
 
 	auto newRates = { 10, 40, 50, 60, static_cast<int>(lastMode.RefreshRate) };
-	auto newModes = new D3DDISPLAYMODE[newRates.size()];
 
 	int newIdx = 0;
 	for (auto rate : newRates)
 	{
-		newModes[newIdx].Width = targetWidth;
-		newModes[newIdx].Height = targetHeight;
-		newModes[newIdx].RefreshRate = rate;
-		newModes[newIdx].Format = targetColorFormat;
+        oldModes[newIdx].Width = targetWidth;
+        oldModes[newIdx].Height = targetHeight;
+        oldModes[newIdx].RefreshRate = rate;
+        oldModes[newIdx].Format = targetColorFormat;
 		newIdx++;
 	}
 
 	for (int i = 0; i < newRates.size(); i++)
 	{
-		auto mode = newModes[i];
+		auto mode = oldModes[i];
 		ScriptingLibrary::log("New mode:" + std::to_string(mode.Width) + " " + std::to_string(mode.Height) + " " + std::to_string(mode.RefreshRate));
 	}
 
 	*reinterpret_cast<int*>(reinterpret_cast<int>(d3dCore) + 0x660) = newRates.size()-1; //selected mode
 	*reinterpret_cast<int*>(reinterpret_cast<int>(d3dCore) + 0x618) = newRates.size();
-	*reinterpret_cast<D3DDISPLAYMODE**>(reinterpret_cast<int>(d3dCore) + 0x61c) = newModes;
 }
 
 uint32_t _cdecl _NuFileInitEx_UseAsHook(uint32_t arg1, uint32_t arg2, uint32_t arg3)
 {
     *d3dCore_presentParams_windowed = 1;
     *d3dCore_isWindowed = 1;
-    *PCSettings_width = 1920;
-    *PCSettings_height = 1080;
-    *PCSettings_screenXPos = 200;
-    *PCSettings_screenYPos = 200;
+    *PCSettings_width = 1280;
+    *PCSettings_height = 720;
+    *PCSettings_screenXPos = 100;
+    *PCSettings_screenYPos = 100;
     return (*oldNuFileInitEx)(arg1, arg2, arg3);
 }
 
@@ -102,7 +99,6 @@ void applyWindowChanges()
 {
     MH_CreateHook(_d3dShowCursor, &_d3dShowCursor_Disable, nullptr);
     MH_CreateHook(_NuFileInitEx, &_NuFileInitEx_UseAsHook, reinterpret_cast<LPVOID*>(&oldNuFileInitEx));
-    MH_CreateHook(CD3DCore_BuildDeviceFromResolution, &CD3DCore_BuildDeviceFromResolution_PatchModesFirst, reinterpret_cast<LPVOID*>(&oldBuildDeviceFromResolution));
 
     MH_CreateHookApi(L"user32", "SetCursor", &SetCursor_Disable, nullptr);
     MH_CreateHookApi(L"user32", "SetCursorPos", &SetCursorPos_Disable, nullptr);
@@ -268,7 +264,7 @@ void CoreMod::earlyInit()
 
 void CoreMod::lateInit()
 {
-    CD3DCore_BuildDeviceFromResolution_PatchModesFirst(reinterpret_cast<void*>(0x029765e8));
+    patchModes(reinterpret_cast<void*>(0x029765e8));
 
     for (auto& [name, script] : loadedScripts)
     {
