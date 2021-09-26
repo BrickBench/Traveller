@@ -5,6 +5,7 @@
 #include <regex>
 #include <thread>
 #include <dinput.h>
+#include <d3d9.h>
 
 #include "GuiManager.h"
 #include "ScriptingLibrary.h"
@@ -14,31 +15,70 @@
 #include "nudebug.h"
 #include "nurender.h"
 
-TRAVELLER_REGISTER_RAW_FUNCTION(0x6d5760, int, SetMouseExclusive, void*, int);
 TRAVELLER_REGISTER_RAW_FUNCTION(0x1ac972, int, _d3dShowCursor, int);
 TRAVELLER_REGISTER_RAW_FUNCTION_CUSTOM_CONVENTION(0x4f9940, __cdecl, uint32_t, _NuFileInitEx, uint32_t, uint32_t, uint32_t);
+TRAVELLER_REGISTER_RAW_FUNCTION_CUSTOM_CONVENTION(0x6e3940, __fastcall, void, CD3DCore_BuildDeviceFromResolution, void*);
 
+TRAVELLER_REGISTER_RAW_GLOBAL(0x2976740, BOOL, d3dCore_presentParams_windowed);
+TRAVELLER_REGISTER_RAW_GLOBAL(0x02976c44, BOOL, d3dCore_isWindowed);
+TRAVELLER_REGISTER_RAW_GLOBAL(0x0082647c, int, PCSettings_width);
+TRAVELLER_REGISTER_RAW_GLOBAL(0x00826480, int, PCSettings_height);
+TRAVELLER_REGISTER_RAW_GLOBAL(0x00826484, int, PCSettings_screenXPos);
+TRAVELLER_REGISTER_RAW_GLOBAL(0x00826488, int, PCSettings_screenYPos);
+
+static CD3DCore_BuildDeviceFromResolutionSignature oldBuildDeviceFromResolution = nullptr;
 static _NuFileInitExSignature oldNuFileInitEx = nullptr;
+static BOOL(__stdcall *oldShowWindow)(HWND, int);
+
+static bool hasPatchedResolution = false;
+
+void CD3DCore_BuildDeviceFromResolution_PatchModesFirst(void* d3dCore)
+{
+
+	int oldModeCount = *reinterpret_cast<int*>(reinterpret_cast<int>(d3dCore) + 0x618);
+	D3DDISPLAYMODE* oldModes = *reinterpret_cast<D3DDISPLAYMODE**>(reinterpret_cast<int>(d3dCore) + 0x61c);
+	auto lastMode = oldModes[oldModeCount - 1];
+
+	auto targetWidth = lastMode.Width;
+	auto targetHeight = lastMode.Height;
+	auto targetColorFormat = lastMode.Format;
+
+	auto newRates = { 10, 40, 50, 60, static_cast<int>(lastMode.RefreshRate) };
+	auto newModes = new D3DDISPLAYMODE[newRates.size()];
+
+	int newIdx = 0;
+	for (auto rate : newRates)
+	{
+		newModes[newIdx].Width = targetWidth;
+		newModes[newIdx].Height = targetHeight;
+		newModes[newIdx].RefreshRate = rate;
+		newModes[newIdx].Format = targetColorFormat;
+		newIdx++;
+	}
+
+	for (int i = 0; i < newRates.size(); i++)
+	{
+		auto mode = newModes[i];
+		ScriptingLibrary::log("New mode:" + std::to_string(mode.Width) + " " + std::to_string(mode.Height) + " " + std::to_string(mode.RefreshRate));
+	}
+
+	*reinterpret_cast<int*>(reinterpret_cast<int>(d3dCore) + 0x660) = newRates.size()-1; //selected mode
+	*reinterpret_cast<int*>(reinterpret_cast<int>(d3dCore) + 0x618) = newRates.size();
+	*reinterpret_cast<D3DDISPLAYMODE**>(reinterpret_cast<int>(d3dCore) + 0x61c) = newModes;
+}
 
 uint32_t _cdecl _NuFileInitEx_UseAsHook(uint32_t arg1, uint32_t arg2, uint32_t arg3)
 {
-    *((int*)0x02976740) = 1;
-    *((byte*)0x02976c44) = 1;
-    *((int*)0x0082647c) = 640;
-    *((int*)0x00826480) = 480;
-    *((int*)0x00826484) = 200;
-    *((int*)0x00826488) = 200;
+    *d3dCore_presentParams_windowed = 1;
+    *d3dCore_isWindowed = 1;
+    *PCSettings_width = 1920;
+    *PCSettings_height = 1080;
+    *PCSettings_screenXPos = 200;
+    *PCSettings_screenYPos = 200;
     return (*oldNuFileInitEx)(arg1, arg2, arg3);
 }
 
-int _fastcall SetMouseExclusive_ForceToNonExclusive(void* thisPtr, int exclusive)
-{
-    LPDIRECTINPUTDEVICE8 device = *reinterpret_cast<LPDIRECTINPUTDEVICE8*>(reinterpret_cast<int>(thisPtr) + 0x32);
-    device->SetCooperativeLevel(*_HWND, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
-    return exclusive;
-}
-
-int _fastcall _d3dShowCursor_Disable(int show)
+int __fastcall _d3dShowCursor_Disable(int show)
 {
     return 0;
 }
@@ -53,17 +93,27 @@ BOOL _stdcall SetCursorPos_Disable(int X, int Y)
     return true;
 }
 
-void applyFriendlinessChanges()
+BOOL _stdcall ShowWindow_ForceWindowed(HWND hwnd, int nCmdShow)
 {
-    MH_CreateHook(SetMouseExclusive, &SetMouseExclusive_ForceToNonExclusive, nullptr);
+    return (*oldShowWindow)(hwnd, 1);
+}
+
+void applyWindowChanges()
+{
     MH_CreateHook(_d3dShowCursor, &_d3dShowCursor_Disable, nullptr);
+    MH_CreateHook(_NuFileInitEx, &_NuFileInitEx_UseAsHook, reinterpret_cast<LPVOID*>(&oldNuFileInitEx));
+    MH_CreateHook(CD3DCore_BuildDeviceFromResolution, &CD3DCore_BuildDeviceFromResolution_PatchModesFirst, reinterpret_cast<LPVOID*>(&oldBuildDeviceFromResolution));
+
     MH_CreateHookApi(L"user32", "SetCursor", &SetCursor_Disable, nullptr);
     MH_CreateHookApi(L"user32", "SetCursorPos", &SetCursorPos_Disable, nullptr);
+    MH_CreateHookApi(L"user32", "ShowWindow", &ShowWindow_ForceWindowed, reinterpret_cast<LPVOID*>(&oldShowWindow));
 
-    //MH_EnableHook(SetMouseExclusive);
+    //MH_EnableHook(CD3DCore_BuildDeviceFromResolution);
     MH_EnableHook(_d3dShowCursor);
     MH_EnableHook(&SetCursor);
     MH_EnableHook(&SetCursorPos);
+    MH_EnableHook(_NuFileInitEx);
+    MH_EnableHook(&ShowWindow);
 }
 
 std::map<std::string, std::unique_ptr<sol::table>> loadLuaScripts()
@@ -205,10 +255,7 @@ void CoreMod::earlyInit()
 
 	this->loadedScripts = loadLuaScripts();
 #endif
-    applyFriendlinessChanges();
-
-    MH_CreateHook(_NuFileInitEx, &_NuFileInitEx_UseAsHook, reinterpret_cast<LPVOID*>(&oldNuFileInitEx));
-    MH_EnableHook(_NuFileInitEx);
+    applyWindowChanges();
 
     for (auto& [name, script] : loadedScripts)
     {
@@ -221,6 +268,7 @@ void CoreMod::earlyInit()
 
 void CoreMod::lateInit()
 {
+    CD3DCore_BuildDeviceFromResolution_PatchModesFirst(reinterpret_cast<void*>(0x029765e8));
 
     for (auto& [name, script] : loadedScripts)
     {
