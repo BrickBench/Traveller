@@ -28,6 +28,8 @@ public:
     /// </summary>
     virtual void earlyInit() {}
 
+    virtual void preWindowInit() {}
+
     /// <summary>
     /// Called right before exiting the initialization procedure.
     /// This is after all of the global game files have been loaded and right before control is handed to the user in the main menu
@@ -45,7 +47,6 @@ public:
     /// Any modification of rendered engine objects should occur here
     /// </summary>
     virtual void earlyRender() {}
-
 
     /// <summary>
     /// Called at the end of the render loop.

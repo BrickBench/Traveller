@@ -8,6 +8,7 @@
 #include <iostream>
 
 #include "CoreMod.h"
+#include "MinHook.h"
 
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -280,9 +281,38 @@ bool started = false;
 WNDPROC lastProc;
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
+
+
+struct DIMOUSESTATE2
+{
+    long lx;
+    long ly;
+    long lz;
+    char keys[8];
+};
+
+static char emptyKeyState[0x100];
+static DIMOUSESTATE2 emptyMouseState{ 0,0,0,{0,0,0,0,0,0,0,0} };
+
+TRAVELLER_REGISTER_RAW_FUNCTION(0x6d5990, char*, ReadKey, void);
+TRAVELLER_REGISTER_RAW_FUNCTION(0x6d57d0, DIMOUSESTATE2*, ReadMouse, void);
+
+char* _fastcall stubReadKey(void* thisValue)
+{
+    return emptyKeyState;
+}
+
+DIMOUSESTATE2* _fastcall stubReadMouse(void* thisValue)
+{
+    return &emptyMouseState;
+}
+
 void Gui::initializeImGui()
 {
     if (started) return;
+
+    MH_CreateHook(ReadKey, &stubReadKey, nullptr);
+    MH_CreateHook(ReadMouse, &stubReadMouse, nullptr);
 
 	ScriptingLibrary::log("Initializing ImGui");
     auto hwnd = reinterpret_cast<HWND*>(0x00924884);
@@ -340,27 +370,34 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
     if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
     {
+        MH_EnableHook(ReadKey);
+        MH_EnableHook(ReadMouse);
+
         return true;
     }
 
+    if (msg >= WM_KEYFIRST && msg <= WM_KEYLAST && io.WantCaptureKeyboard)
+    {
+        MH_EnableHook(ReadKey);
+        return true;
+    }
+    MH_DisableHook(ReadKey);
+
+    if (msg >= WM_MOUSEFIRST && msg <= WM_MOUSELAST && io.WantCaptureMouse)
+    {
+        MH_EnableHook(ReadMouse);
+        return true;
+    }
+    MH_DisableHook(ReadMouse);
+
     if (msg == WM_KEYDOWN || msg == WM_KEYUP)
     {
-	    ScriptingLibrary::onKeyboardInput(msg, wParam);
+        ScriptingLibrary::onKeyboardInput(msg, wParam);
 
         if (msg == WM_KEYDOWN && wParam == VK_F8)
         {
             showConsole = !showConsole;
         }
-    }
-
-    if (msg >= WM_KEYFIRST && msg <= WM_KEYLAST && io.WantCaptureKeyboard)
-    {
-        return true;
-    }
-
-    if (msg >= WM_MOUSEFIRST && msg <= WM_MOUSELAST && io.WantCaptureMouse)
-    {
-        return true;
     }
 
     return CallWindowProc(lastProc, hWnd, msg, wParam, lParam);

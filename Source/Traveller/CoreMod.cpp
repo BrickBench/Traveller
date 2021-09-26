@@ -1,8 +1,10 @@
 #include "CoreMod.h"
 
 #include <filesystem>
+#include <ranges>
 #include <regex>
 #include <thread>
+#include <dinput.h>
 
 #include "GuiManager.h"
 #include "ScriptingLibrary.h"
@@ -10,7 +12,59 @@
 #include "LuaRegistry.h"
 #include "nuworld.h"
 #include "nudebug.h"
+#include "nurender.h"
 
+TRAVELLER_REGISTER_RAW_FUNCTION(0x6d5760, int, SetMouseExclusive, void*, int);
+TRAVELLER_REGISTER_RAW_FUNCTION(0x1ac972, int, _d3dShowCursor, int);
+TRAVELLER_REGISTER_RAW_FUNCTION_CUSTOM_CONVENTION(0x4f9940, __cdecl, uint32_t, _NuFileInitEx, uint32_t, uint32_t, uint32_t);
+
+static _NuFileInitExSignature oldNuFileInitEx = nullptr;
+
+uint32_t _cdecl _NuFileInitEx_UseAsHook(uint32_t arg1, uint32_t arg2, uint32_t arg3)
+{
+    *((int*)0x02976740) = 1;
+    *((byte*)0x02976c44) = 1;
+    *((int*)0x0082647c) = 640;
+    *((int*)0x00826480) = 480;
+    *((int*)0x00826484) = 200;
+    *((int*)0x00826488) = 200;
+    return (*oldNuFileInitEx)(arg1, arg2, arg3);
+}
+
+int _fastcall SetMouseExclusive_ForceToNonExclusive(void* thisPtr, int exclusive)
+{
+    LPDIRECTINPUTDEVICE8 device = *reinterpret_cast<LPDIRECTINPUTDEVICE8*>(reinterpret_cast<int>(thisPtr) + 0x32);
+    device->SetCooperativeLevel(*_HWND, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
+    return exclusive;
+}
+
+int _fastcall _d3dShowCursor_Disable(int show)
+{
+    return 0;
+}
+
+HCURSOR _stdcall SetCursor_Disable(HCURSOR cursor)
+{
+    return cursor;
+}
+
+BOOL _stdcall SetCursorPos_Disable(int X, int Y)
+{
+    return true;
+}
+
+void applyFriendlinessChanges()
+{
+    MH_CreateHook(SetMouseExclusive, &SetMouseExclusive_ForceToNonExclusive, nullptr);
+    MH_CreateHook(_d3dShowCursor, &_d3dShowCursor_Disable, nullptr);
+    MH_CreateHookApi(L"user32", "SetCursor", &SetCursor_Disable, nullptr);
+    MH_CreateHookApi(L"user32", "SetCursorPos", &SetCursorPos_Disable, nullptr);
+
+    //MH_EnableHook(SetMouseExclusive);
+    MH_EnableHook(_d3dShowCursor);
+    MH_EnableHook(&SetCursor);
+    MH_EnableHook(&SetCursorPos);
+}
 
 std::map<std::string, std::unique_ptr<sol::table>> loadLuaScripts()
 {
@@ -81,7 +135,7 @@ void CoreMod::runScript(const std::string& name, const std::string& func)
 
 void registerTypes()
 {
-    for (auto func : luaRegistries)
+    for (auto const& func : luaRegistries)
     {
         (*func)();
     }
@@ -97,7 +151,6 @@ void registerTypes()
 		"y", &nuvec_s::y,
 		"z", &nuvec_s::z);
  }
-
 
 void processConsoleScript(const std::string& script)
 {
@@ -152,7 +205,10 @@ void CoreMod::earlyInit()
 
 	this->loadedScripts = loadLuaScripts();
 #endif
+    applyFriendlinessChanges();
 
+    MH_CreateHook(_NuFileInitEx, &_NuFileInitEx_UseAsHook, reinterpret_cast<LPVOID*>(&oldNuFileInitEx));
+    MH_EnableHook(_NuFileInitEx);
 
     for (auto& [name, script] : loadedScripts)
     {
@@ -165,10 +221,6 @@ void CoreMod::earlyInit()
 
 void CoreMod::lateInit()
 {
-#ifdef LOAD_LUA
-   // auto consoleThread = std::thread(&readConsoleStream);
-   // consoleThread.detach();
-#endif
 
     for (auto& [name, script] : loadedScripts)
     {
@@ -188,7 +240,7 @@ void CoreMod::earlyUpdate(double delta)
 
 void CoreMod::earlyRender()
 {
-    for (auto& [name, script] : loadedScripts)
+    for (const auto& name : loadedScripts | std::views::keys)
     {
         ScriptingLibrary::currentModule = name;
         runScript(name, "earlyRender");
@@ -198,7 +250,7 @@ void CoreMod::earlyRender()
 static bool drawGrid = false;
 void CoreMod::lateRender()
 {
-    for (auto& [name, script] : loadedScripts)
+    for (const auto& name : loadedScripts | std::views::keys)
     {
         ScriptingLibrary::currentModule = name;
         runScript(name, "lateRender");
@@ -211,19 +263,19 @@ void CoreMod::lateRender()
     }
 }
 
-
 void CoreMod::onKeyboardInput(int message, int keyCode)
 {
 	if (message == WM_KEYDOWN)
 	{
         if (keyCode == 'G')
         {
-            drawGrid = true;
+            typedef void(*mystery)();
+            (*reinterpret_cast<mystery>(0x688d70))();
+            ScriptingLibrary::log(std::to_string(*((int*)0x29620f4)));
         }
 
 		if (keyCode == 'N')
 		{
-
             if (*reinterpret_cast<int*>(0x7f1138) != 0)
             {
                 *reinterpret_cast<int*>(0x7f1138) = 0;

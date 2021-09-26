@@ -131,7 +131,11 @@ namespace ScriptingLibrary
 
     void preWindowInit()
     {
-
+        for (auto& [name, mod] : loadedMods)
+        {
+            ScriptingLibrary::currentModule = name;
+            mod->preWindowInit();
+        }
     }
 
 
@@ -151,6 +155,7 @@ namespace ScriptingLibrary
     void earlyInit()
     {
         //openConsole();
+        MH_Initialize();
 
         loadedMods = loadDllFiles();
         loadedMods["CoreMod"] = std::make_shared<CoreMod>();
@@ -160,7 +165,7 @@ namespace ScriptingLibrary
 
         InjectionManager::initialize();
 
-        InjectionManager::injectFunction<&preWindowInit, 0x006dbf4c, reinterpret_cast<void*>(0x006d3150)>();
+        InjectionManager::injectFunction<&preWindowInit, 0x6e3948, reinterpret_cast<void*>(0x6df300)>();
         InjectionManager::injectFunction<&lateInit, 0x004931d4, reinterpret_cast<void*>(0x00549430)>();
         InjectionManager::injectFunction<&lateUpdate, 0x00493533, reinterpret_cast<void*>(0x00548f00)>();
         InjectionManager::injectFunction<&lateRender, 0x0060b569 , reinterpret_cast<void*>(0x006e4a10)>();
