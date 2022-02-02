@@ -391,5 +391,8 @@ FodyWeavers.xsd
 out/
 build/
 
+Build/
+Out/
+
 # Visual Studio CMake
 CMakeSettings.json
