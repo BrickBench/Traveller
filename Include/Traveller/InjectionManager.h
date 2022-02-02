@@ -14,17 +14,17 @@ namespace InjectionManager
 		}
 	}
 
-	template <void(*F)(), void* TargetFunc>
+	template <void(*F)(), uintptr_t TargetFunc>
 	void callTemplate()
 	{
 		typedef void (*fptr)();
-		auto oldFunc = reinterpret_cast<fptr>(reinterpret_cast<uintptr_t>(TargetFunc));
+		auto oldFunc = reinterpret_cast<fptr>(TargetFunc);
 
 		(*F)();
 		(*oldFunc)();
 	}
 
-	template <void(*NewFunc)(), uintptr_t CallInstr, void* TargetFunc>
+	template <void(*NewFunc)(), uintptr_t CallInstr, uintptr_t TargetFunc>
 	TTSLLib void injectFunction()
 	{
 		constexpr int replacementOffset = CallInstr + 1;

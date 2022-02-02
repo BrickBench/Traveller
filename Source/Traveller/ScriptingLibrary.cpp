@@ -165,10 +165,10 @@ namespace ScriptingLibrary
 
         InjectionManager::initialize();
 
-        InjectionManager::injectFunction<&preWindowInit, 0x6e3948, reinterpret_cast<void*>(0x6df300)>();
-        InjectionManager::injectFunction<&lateInit, 0x004931d4, reinterpret_cast<void*>(0x00549430)>();
-        InjectionManager::injectFunction<&lateUpdate, 0x00493533, reinterpret_cast<void*>(0x00548f00)>();
-        InjectionManager::injectFunction<&lateRender, 0x0060b569 , reinterpret_cast<void*>(0x006e4a10)>();
+        InjectionManager::injectFunction<&preWindowInit, 0x6e3948, 0x6df300>();
+        InjectionManager::injectFunction<&lateInit, 0x004931d4, 0x00549430>();
+        InjectionManager::injectFunction<&lateUpdate, 0x00493533, 0x00548f00>();
+        InjectionManager::injectFunction<&lateRender, 0x0060b569 , 0x006e4a10>();
 
         for (auto& [name, mod] : loadedMods)
         {

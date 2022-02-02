@@ -6,6 +6,7 @@
 #include <imgui_impl_dx9.h>
 #include <imgui_impl_win32.h>
 #include <iostream>
+#include <vector>
 
 #include "CoreMod.h"
 #include "MinHook.h"
@@ -56,7 +57,7 @@ struct GameConsole
         Items.clear();
     }
 
-    void AddLog(const std::string& log) IM_FMTARGS(2)
+    void AddLog(const std::string& log) //IM_FMTARGS(2)
     {
         Items.push_back(log);
     }
@@ -311,8 +312,8 @@ void Gui::initializeImGui()
 {
     if (started) return;
 
-    MH_CreateHook(ReadKey, &stubReadKey, nullptr);
-    MH_CreateHook(ReadMouse, &stubReadMouse, nullptr);
+    MH_CreateHook((LPVOID)ReadKey, (LPVOID)&stubReadKey, nullptr);
+    MH_CreateHook((LPVOID)ReadMouse, (LPVOID)&stubReadMouse, nullptr);
 
 	ScriptingLibrary::log("Initializing ImGui");
     auto hwnd = reinterpret_cast<HWND*>(0x00924884);
@@ -370,25 +371,25 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
     if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
     {
-        MH_EnableHook(ReadKey);
-        MH_EnableHook(ReadMouse);
+        MH_EnableHook((LPVOID)ReadKey);
+        MH_EnableHook((LPVOID)ReadMouse);
 
         return true;
     }
 
     if (msg >= WM_KEYFIRST && msg <= WM_KEYLAST && io.WantCaptureKeyboard)
     {
-        MH_EnableHook(ReadKey);
+        MH_EnableHook((LPVOID)ReadKey);
         return true;
     }
-    MH_DisableHook(ReadKey);
+    MH_DisableHook((LPVOID)ReadKey);
 
     if (msg >= WM_MOUSEFIRST && msg <= WM_MOUSELAST && io.WantCaptureMouse)
     {
-        MH_EnableHook(ReadMouse);
+        MH_EnableHook((LPVOID)ReadMouse);
         return true;
     }
-    MH_DisableHook(ReadMouse);
+    MH_DisableHook((LPVOID)ReadMouse);
 
     if (msg == WM_KEYDOWN || msg == WM_KEYUP)
     {

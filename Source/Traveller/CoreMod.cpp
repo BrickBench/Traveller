@@ -97,19 +97,19 @@ BOOL _stdcall ShowWindow_ForceWindowed(HWND hwnd, int nCmdShow)
 
 void applyWindowChanges()
 {
-    MH_CreateHook(_d3dShowCursor, &_d3dShowCursor_Disable, nullptr);
-    MH_CreateHook(_NuFileInitEx, &_NuFileInitEx_UseAsHook, reinterpret_cast<LPVOID*>(&oldNuFileInitEx));
+    MH_CreateHook((LPVOID)_d3dShowCursor, (LPVOID)&_d3dShowCursor_Disable, nullptr);
+    MH_CreateHook((LPVOID)_NuFileInitEx, (LPVOID)&_NuFileInitEx_UseAsHook, reinterpret_cast<LPVOID*>(&oldNuFileInitEx));
 
-    MH_CreateHookApi(L"user32", "SetCursor", &SetCursor_Disable, nullptr);
-    MH_CreateHookApi(L"user32", "SetCursorPos", &SetCursorPos_Disable, nullptr);
-    MH_CreateHookApi(L"user32", "ShowWindow", &ShowWindow_ForceWindowed, reinterpret_cast<LPVOID*>(&oldShowWindow));
+    MH_CreateHookApi(L"user32", "SetCursor", (LPVOID)&SetCursor_Disable, nullptr);
+    MH_CreateHookApi(L"user32", "SetCursorPos", (LPVOID)&SetCursorPos_Disable, nullptr);
+    MH_CreateHookApi(L"user32", "ShowWindow", (LPVOID)ShowWindow_ForceWindowed, reinterpret_cast<LPVOID*>(&oldShowWindow));
 
     //MH_EnableHook(CD3DCore_BuildDeviceFromResolution);
-    MH_EnableHook(_d3dShowCursor);
-    MH_EnableHook(&SetCursor);
-    MH_EnableHook(&SetCursorPos);
-    MH_EnableHook(_NuFileInitEx);
-    MH_EnableHook(&ShowWindow);
+    MH_EnableHook((LPVOID)_d3dShowCursor);
+    MH_EnableHook((LPVOID)&SetCursor);
+    MH_EnableHook((LPVOID)&SetCursorPos);
+    MH_EnableHook((LPVOID)_NuFileInitEx);
+    MH_EnableHook((LPVOID)&ShowWindow);
 }
 
 std::map<std::string, std::unique_ptr<sol::table>> loadLuaScripts()

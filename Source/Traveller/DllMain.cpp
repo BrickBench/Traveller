@@ -11,37 +11,32 @@
 
 #include "ScriptingLibrary.h"
 
+#ifdef MSVC
+#define ASM_BLOCK(a) _asm {#a}
+#else
+#define ASM_BLOCK(a) asm volatile("#a")
+#endif
 HMODULE dinput8;
 FARPROC dinput8_functions[5];
 
-__declspec(naked) void __stdcall jumpDirectInput8Create() {
-    _asm {
-        jmp dinput8_functions[0];
-    }
+extern "C" __declspec(naked) void __stdcall jumpDirectInput8Create() {
+    ASM_BLOCK(jmp dinput8_functions[0];);
 }
 
-__declspec(naked) void __stdcall jumpDllCanUnloadNow() {
-    _asm {
-        jmp dinput8_functions[1];
-    }
+extern "C" __declspec(naked) void __stdcall jumpDllCanUnloadNow() {
+    ASM_BLOCK(jmp dinput8_functions[1];);
 }
 
-__declspec(naked) void __stdcall jumpDllGetClassObject() {
-    _asm {
-        jmp dinput8_functions[2];
-    }
+extern "C" __declspec(naked) void __stdcall jumpDllGetClassObject() {
+    ASM_BLOCK(jmp dinput8_functions[2];);
 }
 
-__declspec(naked) void __stdcall jumpDllRegisterServer() {
-    _asm {
-        jmp dinput8_functions[3];
-    }
+extern "C" __declspec(naked) void __stdcall jumpDllRegisterServer() {
+    ASM_BLOCK(jmp dinput8_functions[3];);
 }
 
-__declspec(naked) void __stdcall jumpDllUnregisterServer() {
-    _asm {
-        jmp dinput8_functions[4];
-    }
+extern "C" __declspec(naked) void __stdcall jumpDllUnregisterServer() {
+    ASM_BLOCK(jmp dinput8_functions[4];);
 }
 
 void initializeDllProxy() {
@@ -64,7 +59,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     {
     case DLL_PROCESS_ATTACH:
         initializeDllProxy();
-        InjectionManager::injectFunction<&ScriptingLibrary::init, 0x00401230, reinterpret_cast<void*>(0x00428b90)>();
+        InjectionManager::injectFunction<&ScriptingLibrary::init, 0x00401230, 0x00428b90>();
     case DLL_THREAD_ATTACH:
     case DLL_THREAD_DETACH:
     case DLL_PROCESS_DETACH:
