@@ -3,51 +3,88 @@
 
 #include "InjectionManager.h"
 
-
 #include <cstdio>
 #include <imgui.h>
 #include <iostream>
+#include <fstream>
 #include <tchar.h>
 
 #include "ScriptingLibrary.h"
 
-#ifdef MSVC
-#define ASM_BLOCK(a) _asm {#a}
-#else
-#define ASM_BLOCK(a) asm volatile("#a")
-#endif
 HMODULE dinput8;
-FARPROC dinput8_functions[5];
+FARPROC dinput8_create;
+FARPROC dinput8_unload;
+FARPROC dinput8_get_class;
+FARPROC dinput8_register;
+FARPROC dinput8_unregister;
 
+#ifdef MSVC
+__declspec(naked) void __stdcall jumpDirectInput8Create() {
+    _asm{jmp dinput8_create;}
+}
+
+__declspec(naked) void __stdcall jumpDllCanUnloadNow() {
+    _asm{jmp dinput8_unload;}
+}
+
+__declspec(naked) void __stdcall jumpDllGetClassObject() {
+    _asm{jmp dinput8_get_class;}
+}
+
+__declspec(naked) void __stdcall jumpDllRegisterServer() {
+    _asm{jmp dinput8_register;}
+}
+
+__declspec(naked) void __stdcall jumpDllUnregisterServer() {
+    _asm{jmp dinput8_unregister;}
+}
+#else
 extern "C" __declspec(naked) void __stdcall jumpDirectInput8Create() {
-    ASM_BLOCK(jmp dinput8_functions[0];);
+    asm ("jmp *%0"
+        :
+        : "r" (dinput8_create)
+        : "%eax");
 }
 
 extern "C" __declspec(naked) void __stdcall jumpDllCanUnloadNow() {
-    ASM_BLOCK(jmp dinput8_functions[1];);
+    asm ("jmp *%0"
+        :
+        : "r" (dinput8_unload)
+        : "%eax");
 }
 
 extern "C" __declspec(naked) void __stdcall jumpDllGetClassObject() {
-    ASM_BLOCK(jmp dinput8_functions[2];);
+    asm ("jmp *%0"
+        :
+        : "r" (dinput8_get_class)
+        : "%eax");
 }
 
 extern "C" __declspec(naked) void __stdcall jumpDllRegisterServer() {
-    ASM_BLOCK(jmp dinput8_functions[3];);
+    asm ("jmp *%0"
+        :
+        : "r" (dinput8_register)
+        : "%eax");
 }
 
 extern "C" __declspec(naked) void __stdcall jumpDllUnregisterServer() {
-    ASM_BLOCK(jmp dinput8_functions[4];);
+    asm ("jmp *%0"
+        :
+        : "r" (dinput8_unregister)
+        : "%eax");
+
 }
+#endif
 
 void initializeDllProxy() {
-    dinput8 = LoadLibraryA("C:\\Windows\\System32\\dinput8.dll"); 
+    dinput8 = LoadLibraryA("C:\\windows\\system32\\dinput8.dll"); 
 
     // assign addresses of functions
-    dinput8_functions[0] = GetProcAddress(dinput8, "DirectInput8Create");
-    dinput8_functions[1] = GetProcAddress(dinput8, "DllCanUnloadNow");
-    dinput8_functions[2] = GetProcAddress(dinput8, "DllGetClassObject");
-    dinput8_functions[3] = GetProcAddress(dinput8, "DllRegisterServer");
-    dinput8_functions[4] = GetProcAddress(dinput8, "DllUnregisterServer");
+    dinput8_create = GetProcAddress(dinput8, "DirectInput8Create");
+    dinput8_unload = GetProcAddress(dinput8, "DllCanUnloadNow");
+    dinput8_get_class = GetProcAddress(dinput8, "DllGetClassObject");
+    dinput8_register = GetProcAddress(dinput8, "DllRegisterServer");
+    dinput8_unregister = GetProcAddress(dinput8, "DllUnregisterServer");
 }
 
 BOOL APIENTRY DllMain( HMODULE hModule,

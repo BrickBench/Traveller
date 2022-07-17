@@ -154,7 +154,7 @@ namespace ScriptingLibrary
 
     void earlyInit()
     {
-        //openConsole();
+        openConsole();
         MH_Initialize();
 
         loadedMods = loadDllFiles();

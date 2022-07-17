@@ -238,8 +238,8 @@ void loadLuaEnvironment()
     lua.open_libraries(sol::lib::base, sol::lib::package, sol::lib::io,
         sol::lib::table, sol::lib::string, sol::lib::utf8, sol::lib::math, sol::lib::debug);
 
-    lua["fennel"] = lua.script_file("fennel.lua");
-    lua.script("table.insert(package.loaders or package.searchers, fennel.searcher)");
+  //  lua["fennel"] = lua.script_file("fennel.lua");
+  //  lua.script("table.insert(package.loaders or package.searchers, fennel.searcher)");
 }
 
 void CoreMod::earlyInit()
