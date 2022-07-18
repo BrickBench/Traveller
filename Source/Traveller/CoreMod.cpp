@@ -4,6 +4,8 @@
 #include <ranges>
 #include <regex>
 #include <thread>
+#include <iostream>
+#include <fstream>
 #include <dinput.h>
 #include <d3d9.h>
 
@@ -38,8 +40,8 @@ void patchModes(void* d3dCore)
 	D3DDISPLAYMODE* oldModes = *reinterpret_cast<D3DDISPLAYMODE**>(reinterpret_cast<int>(d3dCore) + 0x61c);
 	auto lastMode = oldModes[oldModeCount - 1];
 
-	auto targetWidth = lastMode.Width;
-	auto targetHeight = lastMode.Height;
+	auto targetWidth = 2560;
+	auto targetHeight = 1440;
 	auto targetColorFormat = lastMode.Format;
 
 	auto newRates = { 10, 40, 50, 60, static_cast<int>(lastMode.RefreshRate) };
@@ -68,8 +70,8 @@ uint32_t _cdecl _NuFileInitEx_UseAsHook(uint32_t arg1, uint32_t arg2, uint32_t a
 {
     *d3dCore_presentParams_windowed = 1;
     *d3dCore_isWindowed = 1;
-    *PCSettings_width = 1280;
-    *PCSettings_height = 720;
+    *PCSettings_width = 2560;
+    *PCSettings_height = 1440;
     *PCSettings_screenXPos = 100;
     *PCSettings_screenYPos = 100;
     return (*oldNuFileInitEx)(arg1, arg2, arg3);
@@ -258,6 +260,25 @@ void CoreMod::earlyInit()
         ScriptingLibrary::currentModule = name;
         runScript(name, "earlyInit");
     }
+
+    ScriptingLibrary::log("Reading shader.hlsl...");
+
+    std::streampos size;
+    char* memblock;
+
+    std::ifstream file("shader.hlsl", std::ios::in | std::ios::binary | std::ios::ate);
+    if (file.is_open())
+    {
+        size = file.tellg();
+        memblock = (char*)malloc(size);
+        file.seekg(0, std::ios::beg);
+        file.read(memblock, size);
+        file.close();
+        MemWriteUtils::writeSafeUncheckedPtr(0x00746158, (uint32_t)size);
+        MemWriteUtils::writeSafeUncheckedPtr(0x0074615D, (uint32_t)memblock);
+        ScriptingLibrary::log("Successfully patched in shader.hlsl!");
+    }
+    else ScriptingLibrary::log("Could not find shader.hlsl!! Skipping shader patch.");
 
     ScriptingLibrary::log("Initialized CoreMod");
 }
