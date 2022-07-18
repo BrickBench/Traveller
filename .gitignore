@@ -396,3 +396,5 @@ Out/
 
 # Visual Studio CMake
 CMakeSettings.json
+
+compile_commands.json

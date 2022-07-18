@@ -5,12 +5,12 @@
 
 namespace Gui
 {
-	void startRender();
+    void startRender();
 
-	void endRender();
+    void endRender();
 
-	void initializeImGui();
+    void initializeImGui();
 
-	void writeToConsole(const std::string& value);
+    void writeToConsole(const std::string& value);
 };
 

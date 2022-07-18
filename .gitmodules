@@ -7,3 +7,6 @@
 [submodule "ThirdParty/minhook"]
 	path = ThirdParty/minhook
 	url = https://github.com/TsudaKageyu/minhook
+[submodule "ThirdParty/ini-parser-cpp"]
+	path = ThirdParty/ini-parser-cpp
+	url = https://github.com/CODESOLE/ini-parser-cpp

@@ -164,10 +164,10 @@ struct GameConsole
         {
             ClearLog();
         }
-    	else if (str == "fennel")
-    	{
+        else if (str == "fennel")
+        {
             CoreMod::useFennelInterpreter = true;
-    	}
+        }
         else if (str == "lua")
         {
             CoreMod::useFennelInterpreter = false;
@@ -315,7 +315,7 @@ void Gui::initializeImGui()
     MH_CreateHook((LPVOID)ReadKey, (LPVOID)&stubReadKey, nullptr);
     MH_CreateHook((LPVOID)ReadMouse, (LPVOID)&stubReadMouse, nullptr);
 
-	ScriptingLibrary::log("Initializing ImGui");
+    ScriptingLibrary::log("Initializing ImGui");
     auto hwnd = reinterpret_cast<HWND*>(0x00924884);
     auto d3d9Device = reinterpret_cast<IDirect3DDevice9**>(0x029765ec);
 
@@ -361,8 +361,8 @@ void Gui::startRender()
 }
 
 void Gui::endRender(){
-	ImGui::Render();
-	ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
+    ImGui::Render();
+    ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
 }
 
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)

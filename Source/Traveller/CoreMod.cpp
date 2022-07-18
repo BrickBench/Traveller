@@ -28,52 +28,55 @@ TRAVELLER_REGISTER_RAW_GLOBAL(0x00826480, int, PCSettings_height);
 TRAVELLER_REGISTER_RAW_GLOBAL(0x00826484, int, PCSettings_screenXPos);
 TRAVELLER_REGISTER_RAW_GLOBAL(0x00826488, int, PCSettings_screenYPos);
 
-static CD3DCore_BuildDeviceFromResolutionSignature oldBuildDeviceFromResolution = nullptr;
 static _NuFileInitExSignature oldNuFileInitEx = nullptr;
 static BOOL(__stdcall *oldShowWindow)(HWND, int);
 
-static bool hasPatchedResolution = false;
+static int windowWidth;
+static int windowHeight;
+
+static int windowXPos;
+static int windowYPos;
 
 void patchModes(void* d3dCore)
 {
-	int oldModeCount = *reinterpret_cast<int*>(reinterpret_cast<int>(d3dCore) + 0x618);
-	D3DDISPLAYMODE* oldModes = *reinterpret_cast<D3DDISPLAYMODE**>(reinterpret_cast<int>(d3dCore) + 0x61c);
-	auto lastMode = oldModes[oldModeCount - 1];
+    int oldModeCount = *reinterpret_cast<int*>(reinterpret_cast<int>(d3dCore) + 0x618);
+    D3DDISPLAYMODE* oldModes = *reinterpret_cast<D3DDISPLAYMODE**>(reinterpret_cast<int>(d3dCore) + 0x61c);
+    auto lastMode = oldModes[oldModeCount - 1];
 
-	auto targetWidth = lastMode.Width;
-	auto targetHeight = lastMode.Height;
-	auto targetColorFormat = lastMode.Format;
+    auto targetWidth = lastMode.Width;
+    auto targetHeight = lastMode.Height;
+    auto targetColorFormat = lastMode.Format;
 
-	auto newRates = { 10, 40, 50, 60, static_cast<int>(lastMode.RefreshRate) };
+    auto newRates = { 10, 40, 50, 60, static_cast<int>(lastMode.RefreshRate) };
 
-	int newIdx = 0;
-	for (auto rate : newRates)
-	{
+    int newIdx = 0;
+    for (auto rate : newRates)
+    {
         oldModes[newIdx].Width = targetWidth;
         oldModes[newIdx].Height = targetHeight;
         oldModes[newIdx].RefreshRate = rate;
         oldModes[newIdx].Format = targetColorFormat;
-		newIdx++;
-	}
+        newIdx++;
+    }
 
-	for (int i = 0; i < newRates.size(); i++)
-	{
-		auto mode = oldModes[i];
-		ScriptingLibrary::log("New mode:" + std::to_string(mode.Width) + " " + std::to_string(mode.Height) + " " + std::to_string(mode.RefreshRate));
-	}
+    for (int i = 0; i < newRates.size(); i++)
+    {
+        auto mode = oldModes[i];
+        ScriptingLibrary::log("New mode:" + std::to_string(mode.Width) + " " + std::to_string(mode.Height) + " " + std::to_string(mode.RefreshRate));
+    }
 
-	*reinterpret_cast<int*>(reinterpret_cast<int>(d3dCore) + 0x660) = newRates.size()-1; //selected mode
-	*reinterpret_cast<int*>(reinterpret_cast<int>(d3dCore) + 0x618) = newRates.size();
+    *reinterpret_cast<int*>(reinterpret_cast<int>(d3dCore) + 0x660) = newRates.size()-1; //selected mode
+    *reinterpret_cast<int*>(reinterpret_cast<int>(d3dCore) + 0x618) = newRates.size();
 }
 
 uint32_t _cdecl _NuFileInitEx_UseAsHook(uint32_t arg1, uint32_t arg2, uint32_t arg3)
 {
     *d3dCore_presentParams_windowed = 1;
     *d3dCore_isWindowed = 1;
-    *PCSettings_width = 1920;
-    *PCSettings_height = 1080;
-    *PCSettings_screenXPos = 100;
-    *PCSettings_screenYPos = 100;
+    *PCSettings_width = windowWidth;
+    *PCSettings_height = windowHeight;
+    *PCSettings_screenXPos = windowXPos;
+    *PCSettings_screenYPos = windowYPos;
     return (*oldNuFileInitEx)(arg1, arg2, arg3);
 }
 
@@ -97,28 +100,31 @@ BOOL _stdcall ShowWindow_ForceWindowed(HWND hwnd, int nCmdShow)
     return (*oldShowWindow)(hwnd, 1);
 }
 
-void applyWindowChanges()
+void CoreMod::applyWindowChangeHooks()
 {
-    MH_CreateHook((LPVOID)_d3dShowCursor, (LPVOID)&_d3dShowCursor_Disable, nullptr);
-    MH_CreateHook((LPVOID)_NuFileInitEx, (LPVOID)&_NuFileInitEx_UseAsHook, reinterpret_cast<LPVOID*>(&oldNuFileInitEx));
+    if (this->coreConfig->getEntry("display", "disableMouseSteal") == "true") {
+        MH_CreateHookApi(L"user32", "SetCursor", (LPVOID)&SetCursor_Disable, nullptr);
+        MH_CreateHookApi(L"user32", "SetCursorPos", (LPVOID)&SetCursorPos_Disable, nullptr);
+        MH_CreateHook((LPVOID)_d3dShowCursor, (LPVOID)&_d3dShowCursor_Disable, nullptr);
 
-    MH_CreateHookApi(L"user32", "SetCursor", (LPVOID)&SetCursor_Disable, nullptr);
-    MH_CreateHookApi(L"user32", "SetCursorPos", (LPVOID)&SetCursorPos_Disable, nullptr);
-    MH_CreateHookApi(L"user32", "ShowWindow", (LPVOID)ShowWindow_ForceWindowed, reinterpret_cast<LPVOID*>(&oldShowWindow));
+        MH_EnableHook((LPVOID)_d3dShowCursor);
+        MH_EnableHook((LPVOID)&SetCursor);
+        MH_EnableHook((LPVOID)&SetCursorPos);
+    }
 
-    //MH_EnableHook(CD3DCore_BuildDeviceFromResolution);
-    MH_EnableHook((LPVOID)_d3dShowCursor);
-    MH_EnableHook((LPVOID)&SetCursor);
-    MH_EnableHook((LPVOID)&SetCursorPos);
-    MH_EnableHook((LPVOID)_NuFileInitEx);
-    MH_EnableHook((LPVOID)&ShowWindow);
+    if (this->coreConfig->getEntry("display", "windowed") == "true") {
+        MH_CreateHook((LPVOID)_NuFileInitEx, (LPVOID)&_NuFileInitEx_UseAsHook, reinterpret_cast<LPVOID*>(&oldNuFileInitEx));
+        MH_CreateHookApi(L"user32", "ShowWindow", (LPVOID)ShowWindow_ForceWindowed, reinterpret_cast<LPVOID*>(&oldShowWindow));
+        MH_EnableHook((LPVOID)_NuFileInitEx);
+        MH_EnableHook((LPVOID)&ShowWindow);
+    }
 }
 
 std::map<std::string, std::unique_ptr<sol::table>> loadLuaScripts()
 {
     lua.script("mods = {}");
 
-	ScriptingLibrary::log("Loading scripts");
+    ScriptingLibrary::log("Loading scripts");
     std::filesystem::create_directory("modscripts");
 
     std::map <std::string, std::unique_ptr<sol::table>> scripts;
@@ -137,7 +143,6 @@ std::map<std::string, std::unique_ptr<sol::table>> loadLuaScripts()
             std::ranges::replace(luaFile, '\\', '/');
 
             ScriptingLibrary::log("Loading script " + file);
-            //auto result = lua.safe_script_file(file);
             auto result = lua.safe_script("mods." + dirEntry.path().stem().string() + " = require(\"" + luaFile + "\")");
             ScriptingLibrary::log(std::to_string(static_cast<int>(result.get_type())));
             if (!result.valid()) 
@@ -145,7 +150,7 @@ std::map<std::string, std::unique_ptr<sol::table>> loadLuaScripts()
                 sol::error err = result;
                 ScriptingLibrary::log("Failed to execute script " + file + ": " + std::string(err.what()));
             }
-        	else
+            else
             {
                 auto resultObject = lua["mods"][name];
 
@@ -154,7 +159,7 @@ std::map<std::string, std::unique_ptr<sol::table>> loadLuaScripts()
                     auto resultTable = resultObject.get<sol::table>();
                     scripts[dirEntry.path().string()] = std::make_unique<sol::table>(resultTable);
                 }
-        		else
+                else
                 {
                     ScriptingLibrary::log("Script " + file + " did not return a table");
                 }
@@ -170,15 +175,15 @@ std::map<std::string, std::unique_ptr<sol::table>> loadLuaScripts()
 void CoreMod::runScript(const std::string& name, const std::string& func)
 {
     auto namespac = *this->loadedScripts[name];
-	if (namespac[func].get_type() == sol::type::function)
-	{
+    if (namespac[func].get_type() == sol::type::function)
+    {
         auto result = namespac[func].get<sol::safe_function>()();
         if (!result.valid())
         {
             sol::error err = result;
             ScriptingLibrary::log("Failed to execute script " + name + ": " + std::string(err.what()));
         }
-	}
+    }
 }
 
 void registerTypes()
@@ -191,13 +196,13 @@ void registerTypes()
     lua.set_function("getCurrentWorld", &getCurrentWorld);
     
     lua.new_usertype<WORLDINFO_s>("WORLDINFO_s",
-		"name", &WORLDINFO_s::name,
-		"directory", &WORLDINFO_s::directory);
+        "name", &WORLDINFO_s::name,
+        "directory", &WORLDINFO_s::directory);
     
     lua.new_usertype<nuvec_s>("nuvec_s",
-		"x", &nuvec_s::x,
-		"y", &nuvec_s::y,
-		"z", &nuvec_s::z);
+        "x", &nuvec_s::x,
+        "y", &nuvec_s::y,
+        "z", &nuvec_s::z);
  }
 
 void processConsoleScript(const std::string& script)
@@ -218,75 +223,99 @@ void processConsoleScript(const std::string& script)
         sol::error err = result;
         ScriptingLibrary::log("Failed to execute script: " + std::string(err.what()));
     }
-	else
+    else
     {
         lua.script("log(tostring(_scriptResult))");
     }
 }
 
-void readConsoleStream()
-{
-    while (true)
-    {
-        std::string line;
-        std::getline(std::cin, line);
-
-        processConsoleScript(line);
-    }
-}
-
 void loadLuaEnvironment()
 {
-    lua.open_libraries(sol::lib::base, sol::lib::package, sol::lib::io,
-        sol::lib::table, sol::lib::string, sol::lib::utf8, sol::lib::math, sol::lib::debug);
 
-  //  lua["fennel"] = lua.script_file("fennel.lua");
-  //  lua.script("table.insert(package.loaders or package.searchers, fennel.searcher)");
 }
 
 void CoreMod::earlyInit()
 {
+    this->coreConfig = Configuration::getByName("Core.ini", {
+        {
+            "display", {
+                {"windowed", "true"},
+                {"disableMouseSteal", "true"},
+                {"windowWidth", "1920"},
+                {"windowHeight", "1080"},
+                {"windowX", "100"},
+                {"windowY", "100"}
+            }
+        },
+        {
+            "render", {
+                {"useCustomShader", "true"},
+                {"customShaderFile", "shader.hlsl"}
+            }
+        },
+        {
+            "scripting", {
+                {"enableScripting", "true"},
+                {"loadFennel", "true"}
+            }
+        }
+    });
 
-#ifdef LOAD_LUA
-    loadLuaEnvironment();
-    registerTypes();
+    windowWidth = std::stoi(this->coreConfig->getEntry("display", "windowWidth"));
+    windowHeight = std::stoi(this->coreConfig->getEntry("display", "windowHeight"));
 
-	this->loadedScripts = loadLuaScripts();
-#endif
-    applyWindowChanges();
+    windowXPos = std::stoi(this->coreConfig->getEntry("display", "windowX"));
+    windowYPos = std::stoi(this->coreConfig->getEntry("display", "windowY"));
 
-    for (auto& [name, script] : loadedScripts)
-    {
+    applyWindowChangeHooks();
+    
+    if (this->coreConfig->getEntry("scripting", "enableScripting") == "true") {
+        lua.open_libraries(sol::lib::base, sol::lib::package, sol::lib::io,
+            sol::lib::table, sol::lib::string, sol::lib::utf8, sol::lib::math, sol::lib::debug);
+
+        if (this->coreConfig->getEntry("scripting", "loadFennel") == "true") {
+            lua["fennel"] = lua.script_file("fennel.lua");
+            lua.script("table.insert(package.loaders or package.searchers, fennel.searcher)");
+        }
+
+        registerTypes();
+
+        this->loadedScripts = loadLuaScripts();
+    }
+
+    for (auto& [name, script] : loadedScripts) {
         ScriptingLibrary::currentModule = name;
         runScript(name, "earlyInit");
     }
 
-    ScriptingLibrary::log("Reading shader.hlsl...");
+    if (this->coreConfig->getEntry("render", "useCustomShader") == "true") {
+        auto shaderFile = this->coreConfig->getEntry("render", "customShaderFile"); 
+    
+        ScriptingLibrary::log("Reading " + shaderFile); 
 
-    std::streampos size;
-    char* memblock;
+        std::streampos size;
+        char* memblock;
 
-    std::ifstream file("shader.hlsl", std::ios::in | std::ios::binary | std::ios::ate);
-    if (file.is_open())
-    {
-        size = file.tellg();
-        memblock = (char*)malloc(size);
-        file.seekg(0, std::ios::beg);
-        file.read(memblock, size);
-        file.close();
-        MemWriteUtils::writeSafeUncheckedPtr(0x00746158, (uint32_t)size);
-        MemWriteUtils::writeSafeUncheckedPtr(0x0074615D, (uint32_t)memblock);
-        ScriptingLibrary::log("Successfully patched in shader.hlsl!");
+        std::ifstream file(shaderFile, std::ios::in | std::ios::binary | std::ios::ate);
+        if (file.is_open()){
+            size = file.tellg();
+            memblock = (char*)malloc(size);
+            file.seekg(0, std::ios::beg);
+            file.read(memblock, size);
+            file.close();
+            MemWriteUtils::writeSafeUncheckedPtr(0x00746158, (uint32_t)size);
+            MemWriteUtils::writeSafeUncheckedPtr(0x0074615D, (uint32_t)memblock);
+            ScriptingLibrary::log("Successfully patched in " + shaderFile);
+        } else {
+            ScriptingLibrary::log("Could not find shader file! Skipping shader patch.");
+        }
     }
-    else ScriptingLibrary::log("Could not find shader.hlsl!! Skipping shader patch.");
 
     ScriptingLibrary::log("Initialized CoreMod");
 }
 
 void CoreMod::lateInit()
 {
-    patchModes(reinterpret_cast<void*>(0x029765e8));
-
     for (auto& [name, script] : loadedScripts)
     {
         ScriptingLibrary::currentModule = name;
@@ -305,7 +334,7 @@ void CoreMod::earlyUpdate(double delta)
 
 void CoreMod::earlyRender()
 {
-    for (const auto& name : loadedScripts | std::views::keys)
+    for (auto& [name, script] : loadedScripts)
     {
         ScriptingLibrary::currentModule = name;
         runScript(name, "earlyRender");
@@ -315,7 +344,7 @@ void CoreMod::earlyRender()
 static bool drawGrid = false;
 void CoreMod::lateRender()
 {
-    for (const auto& name : loadedScripts | std::views::keys)
+    for (auto& [name, script] : loadedScripts)
     {
         ScriptingLibrary::currentModule = name;
         runScript(name, "lateRender");
@@ -330,8 +359,8 @@ void CoreMod::lateRender()
 
 void CoreMod::onKeyboardInput(int message, int keyCode)
 {
-	if (message == WM_KEYDOWN)
-	{
+    if (message == WM_KEYDOWN)
+    {
         if (keyCode == 'G')
         {
             typedef void(*mystery)();
@@ -339,19 +368,19 @@ void CoreMod::onKeyboardInput(int message, int keyCode)
             ScriptingLibrary::log(std::to_string(*((int*)0x29620f4)));
         }
 
-		if (keyCode == 'N')
-		{
+        if (keyCode == 'N')
+        {
             if (*reinterpret_cast<int*>(0x7f1138) != 0)
             {
                 *reinterpret_cast<int*>(0x7f1138) = 0;
             }
-			else
+            else
             {
                 *reinterpret_cast<int*>(0x7f1138) = 0x009253d0;
                 *reinterpret_cast<nuvec_s*>(0x7f1118) = { 0,0,0 };
             }
-		}
-	}
+        }
+    }
 }
 
 void CoreMod::execScript(const std::string& script)

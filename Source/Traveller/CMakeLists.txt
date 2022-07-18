@@ -50,7 +50,7 @@ set(TRAVELLER_SOURCE_FILES
 	"${CMAKE_CURRENT_SOURCE_DIR}/InputHandler.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/MemWriteUtils.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/ScriptingLibrary.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp"
+ "${CMAKE_CURRENT_SOURCE_DIR}/Configuration.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/dinput8.def"
 	"${CMAKE_SOURCE_DIR}/ThirdParty/imgui/backends/imgui_impl_dx9.cpp"
 	${LUA_SOURCE_FILES}
@@ -63,6 +63,7 @@ set(TRAVELLER_INCLUDE_DIRECTORIES
 	"${CMAKE_SOURCE_DIR}/ThirdParty/sol2/include"
 	"${CMAKE_SOURCE_DIR}/ThirdParty/minhook/src"
 	"${CMAKE_SOURCE_DIR}/ThirdParty/minhook/include"
+	"${CMAKE_SOURCE_DIR}/ThirdParty/ini-parser-cpp/src"
 	"${CMAKE_SOURCE_DIR}/ThirdParty/lua-5.4.3/src")
 
 set(TRAVELLER_LINK_LIBRARIES
