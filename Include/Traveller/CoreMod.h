@@ -5,37 +5,32 @@
 #include "Configuration.h"
 #include "Mod.h"
 
-class CoreMod : public BaseMod
-{
+class CoreMod : public BaseMod {
 private:
-    std::map<std::string, std::unique_ptr<sol::table>> loadedScripts;
+  std::map<std::string, std::unique_ptr<sol::table>> loadedScripts;
 
-    std::shared_ptr<Configuration> coreConfig;
+  void runScript(const std::string &name, const std::string &func);
 
-    void runScript(const std::string& name, const std::string& func);
-
-    void applyWindowChangeHooks();
+  void applyWindowChangeHooks();
 
 public:
-    inline static bool useFennelInterpreter = false;
+  std::shared_ptr<Configuration> coreConfig;
 
-    std::string getName() override
-    {
-        return "CoreMod";
-    }
+  inline static bool useFennelInterpreter = false;
 
-    void earlyInit() override;
+  std::string getName() override { return "CoreMod"; }
 
-    void lateInit() override;
+  void earlyInit() override;
 
-    void earlyUpdate(double delta) override;
+  void lateInit() override;
 
-    void earlyRender() override;
+  void earlyUpdate(double delta) override;
 
-    void lateRender() override;
+  void earlyRender() override;
 
-    void onKeyboardInput(int message, int keyCode) override;
+  void lateRender() override;
 
-    static void execScript(const std::string& script);
+  void onKeyboardInput(int message, int keyCode) override;
+
+  static void execScript(const std::string &script);
 };
-

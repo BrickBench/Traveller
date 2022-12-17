@@ -2,16 +2,14 @@
 #include <cstddef>
 #include <imgui.h>
 
-namespace InputHandler
-{
-	std::byte* getCurrentKeyTable();
+namespace InputHandler {
+std::byte *getCurrentKeyTable();
 
-	bool readKey(int key);
+bool readKey(int key);
 
-	ImVec2 getMousePos();
+ImVec2 getMousePos();
 
-	void requestMouseAccess(bool access);
+void requestMouseAccess(bool access);
 
-	void updateInputs();
-};
-
+void updateInputs();
+}; // namespace InputHandler

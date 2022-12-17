@@ -5,16 +5,14 @@
 #include "Mod.h"
 #include "pch.h"
 
-namespace ScriptingLibrary
-{
-	inline std::string currentModule;
+namespace ScriptingLibrary {
+inline std::string currentModule;
 
-	TTSLLib void log(const std::string& str);
+TTSLLib void log(const std::string &str);
 
-	void init();
+void init();
 
-	void onKeyboardInput(int message, int keyCode);
+void onKeyboardInput(int message, int keyCode);
 
-	std::shared_ptr<BaseMod> getModByName(const std::string& name);
-};
-
+std::shared_ptr<BaseMod> getModByName(const std::string &name);
+}; // namespace ScriptingLibrary

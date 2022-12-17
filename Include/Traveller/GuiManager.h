@@ -3,14 +3,12 @@
 #include <string>
 #include <vector>
 
-namespace Gui
-{
-    void startRender();
+namespace Gui {
+void startRender(int width, int height);
 
-    void endRender();
+void endRender();
 
-    void initializeImGui();
+void initializeImGui();
 
-    void writeToConsole(const std::string& value);
-};
-
+void writeToConsole(const std::string &value);
+}; // namespace Gui
