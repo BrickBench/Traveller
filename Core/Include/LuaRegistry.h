@@ -1,11 +1,12 @@
 #pragma once
 
+#include "pch.h"
 #include "sol/state.hpp"
 
 typedef void (*LuaConfigRun)();
 
-inline sol::state lua;
-inline std::vector<LuaConfigRun> luaRegistries;
+TTSLLib extern sol::state lua;
+TTSLLib extern std::vector<LuaConfigRun> luaRegistries;
 
 #define LOAD_LUA
 

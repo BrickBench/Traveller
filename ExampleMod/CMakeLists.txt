@@ -1,10 +1,9 @@
 set(EXAMPLEMOD_SOURCE_FILES
-	"${CMAKE_CURRENT_SOURCE_DIR}/DllMain.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/ExampleMod.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/Source/DllMain.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Source/ExampleMod.cpp")
 
 set(EXAMPLEMOD_INCLUDE_DIRECTORIES
-	"${CMAKE_SOURCE_DIR}/Include/Traveller"
-	"${CMAKE_SOURCE_DIR}/Include/ExampleMod")
+    "${CMAKE_SOURCE_DIR}/ExampleMod/Include")
 
 set(EXAMPLEMOD_LINK_LIBRARIES DINPUT8)
 

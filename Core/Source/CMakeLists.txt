@@ -5,6 +5,7 @@ set(LUA_SOURCE_FILES
   "${CMAKE_SOURCE_DIR}/ThirdParty/imgui/imgui_draw.cpp"
   "${CMAKE_SOURCE_DIR}/ThirdParty/imgui/imgui_tables.cpp"
   "${CMAKE_SOURCE_DIR}/ThirdParty/imgui/imgui_widgets.cpp"
+  "${CMAKE_SOURCE_DIR}/ThirdParty/imgui/misc/cpp/imgui_stdlib.cpp"
   "${CMAKE_SOURCE_DIR}/ThirdParty/lua-5.4.3/src/lapi.c"
   "${CMAKE_SOURCE_DIR}/ThirdParty/lua-5.4.3/src/lauxlib.c"
   "${CMAKE_SOURCE_DIR}/ThirdParty/lua-5.4.3/src/lbaselib.c"
@@ -44,6 +45,7 @@ set(LUA_SOURCE_FILES
 
 set(TRAVELLER_SOURCE_FILES
 	"${CMAKE_CURRENT_SOURCE_DIR}/DllMain.cpp"
+ "${CMAKE_CURRENT_SOURCE_DIR}/LuaMod.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/CoreMod.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/GuiManager.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/InjectionManager.cpp"

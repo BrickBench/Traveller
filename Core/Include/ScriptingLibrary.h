@@ -10,9 +10,9 @@ inline std::string currentModule;
 
 TTSLLib void log(const std::string &str);
 
-void init();
+TTSLLib void init();
 
-void onKeyboardInput(int message, int keyCode);
+TTSLLib void onKeyboardInput(int message, int keyCode);
 
-std::shared_ptr<BaseMod> getModByName(const std::string &name);
+TTSLLib std::shared_ptr<Mod> getModByName(const std::string &name);
 }; // namespace ScriptingLibrary

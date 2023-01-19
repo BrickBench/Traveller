@@ -1,27 +1,61 @@
 #pragma once
 
+#include "imgui.h"
+#include "imgui_internal.h"
 #ifdef TTSLLibBuild
 #define TTSLModExport __declspec(dllimport)
 #else
 #define TTSLModExport __declspec(dllexport)
 #endif
+
+#include "Configuration.h"
 #include <memory>
 #include <string>
 
 constexpr int MOD_VERSION = 0;
+
 /// <summary>
 /// Base class for a user defined mod.
 /// </summary>
-class BaseMod {
+class Mod {
+private:
+  std::shared_ptr<Configuration> config;
+
 public:
-  virtual ~BaseMod() = default;
+  virtual ~Mod() = default;
+
+  void configureEnvironment(ImGuiContext *context) {
+    ImGui::SetCurrentContext(context);
+  }
+
+  /// <summary>
+  /// Return the lazily loaded configuration for this mod, loaded from a file named <modName>.ini.
+  /// </summary>
+  std::shared_ptr<Configuration> getConfiguration() {
+    if (config) {
+      return config;
+    } else {
+      config = Configuration::getByName(getName() + ".ini", getDefaultConfiguration());
+      return config;
+    }
+  }
+
+  /// <summary>
+  /// Return the version this mod was created with.
+  /// </summary>
+  virtual int getModVersion() { return MOD_VERSION; }
 
   /// <summary>
   /// Returns the name of this mod. Override to set your mod name.
   /// </summary>
   virtual std::string getName() = 0;
 
-  virtual int getModVersion() { return MOD_VERSION; }
+  /// <summary>
+  /// Default configuration for this mod.
+  /// </summary>
+  virtual Configuration::ConfigurationData getDefaultConfiguration() {
+    return {};
+  }
 
   /// <summary>
   /// Called as early as possible in the initialization procedure, before any
@@ -29,6 +63,9 @@ public:
   /// </summary>
   virtual void earlyInit() {}
 
+  /// <summary>
+  /// Called right before the window is created.
+  /// </summary>
   virtual void preWindowInit() {}
 
   /// <summary>
@@ -61,9 +98,12 @@ public:
   /// </summary>
   virtual void drawUI() {}
 
+  /// <summary>
+  /// Parse keyboard input.
+  /// </summary>
   virtual void onKeyboardInput(int message, int keyCode) {}
 };
 
 extern "C" {
-TTSLModExport BaseMod *getModInstance();
+TTSLModExport Mod *getModInstance();
 }

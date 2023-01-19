@@ -5,11 +5,11 @@
 #include "Mod.h"
 #include "ScriptingLibrary.h"
 
-class ExampleMod : public BaseMod {
+class ExampleMod : public Mod {
   std::string getName() override { return "ExampleMod"; }
 
 public:
   void earlyInit() override { ScriptingLibrary::log("I'm here!"); };
 };
 
-extern "C" BaseMod *getModInstance() { return new ExampleMod(); }
+extern "C" Mod *getModInstance() { return new ExampleMod(); }

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 
 project(Traveller VERSION 1.0)
 
-#Disable lib prefix
+# Disable lib prefix
 set(CMAKE_SHARED_LIBRARY_PREFIX "")
 set(CMAKE_STATIC_LIBRARY_PREFIX "")
 
@@ -14,8 +14,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/Out")
 set(LUA_SOURCE "lua-5.4.3")
 set(TRAVELLER_INSTALL_DIRECTORY "/home/javst/Documents/LEGO/TCS_Edited" CACHE STRING "The directory that CMake will install to.")
 
-# Third Party
 add_subdirectory("ThirdParty")
 
-# Internal
-add_subdirectory("Source")
+add_subdirectory("Core")
+add_subdirectory("ExampleMod")
+add_subdirectory("CheatMenu")

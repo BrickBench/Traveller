@@ -1,4 +1,5 @@
 #include "ScriptingLibrary.h"
+#include "LuaMod.h"
 #include "pch.h"
 
 #define SOL_ALL_SAFETIES_ON 1
@@ -15,8 +16,7 @@
 #include "sol/sol.hpp"
 
 namespace ScriptingLibrary {
-std::map<std::string, std::shared_ptr<BaseMod>> loadedMods;
-std::shared_ptr<CoreMod> coreMod;
+std::map<std::string, std::shared_ptr<Mod>> loadedMods;
 
 auto currentTime = std::chrono::high_resolution_clock::now();
 bool beginRender = false;
@@ -50,8 +50,8 @@ void openConsole() {
   std::wcin.clear();
 }
 
-std::map<std::string, std::shared_ptr<BaseMod>> loadDllFiles() {
-  std::map<std::string, std::shared_ptr<BaseMod>> mods;
+std::map<std::string, std::shared_ptr<Mod>> loadDllFiles() {
+  std::map<std::string, std::shared_ptr<Mod>> mods;
   ScriptingLibrary::log("Loading mods");
   std::filesystem::create_directory("plugins");
   for (const auto &dirEntry :
@@ -69,17 +69,19 @@ std::map<std::string, std::shared_ptr<BaseMod>> loadDllFiles() {
 
     ScriptingLibrary::log("Loading library " + path);
 
-    typedef BaseMod *(__cdecl * ModGetter)();
+    typedef Mod *(__cdecl * ModGetter)();
 
     auto address = GetProcAddress(temp, "getModInstance");
 
     if (address != nullptr) {
-      auto objFunc = reinterpret_cast<ModGetter>(address);
-      auto mod = objFunc();
+      auto createModFunc = reinterpret_cast<ModGetter>(address);
+      auto mod = createModFunc();
 
       ScriptingLibrary::log("Loaded mod " + mod->getName());
 
-      mods[mod->getName()] = std::shared_ptr<BaseMod>(mod);
+      mods[mod->getName()] = std::shared_ptr<Mod>(mod);
+    } else {
+      ScriptingLibrary::log("No mod found in " + path);
     }
   }
   ScriptingLibrary::log("Loaded " + std::to_string(mods.size()) + " mods.");
@@ -102,6 +104,9 @@ void earlyUpdate() {
 void lateUpdate() { InputHandler::updateInputs(); }
 
 void earlyRender() {
+  if (!beginRender)
+    return;
+
   for (auto &[name, mod] : loadedMods) {
     ScriptingLibrary::currentModule = name;
     mod->earlyRender();
@@ -116,12 +121,17 @@ void lateRender() {
     ScriptingLibrary::currentModule = name;
     mod->lateRender();
   }
-  auto width = std::stoi(coreMod->coreConfig->getEntry("display", "windowWidth"));
-  auto height = std::stoi(coreMod->coreConfig->getEntry("display", "windowHeight"));
+  auto width = std::stoi(getModByName("Core")->getConfiguration()->getEntry("display", "windowWidth"));
+  auto height = std::stoi(getModByName("Core")->getConfiguration()->getEntry("display", "windowHeight"));
 
   ScriptingLibrary::currentModule = "GUIManager";
   Gui::startRender(width, height);
 
+  for (auto &[name, mod] : loadedMods) {
+    ScriptingLibrary::currentModule = name;
+    mod->drawUI();
+  }
+  
   ScriptingLibrary::currentModule = "GUIManager";
   Gui::endRender();
 }
@@ -134,6 +144,9 @@ void preWindowInit() {
 }
 
 void lateInit() {
+  if (beginRender)
+    return;
+
   ScriptingLibrary::currentModule = "GUIManager";
   Gui::initializeImGui();
   beginRender = true;
@@ -148,10 +161,10 @@ void earlyInit() {
   // openConsole();
   MH_Initialize();
 
-  coreMod = std::make_shared<CoreMod>();
   loadedMods = loadDllFiles();
-  loadedMods["CoreMod"] = coreMod;
-
+  loadedMods["Core"] = std::make_shared<CoreMod>();
+  loadedMods["LuaScript"] = std::make_shared<LuaMod>();
+  
   log("Loaded TTScriptingLibrary");
 
   InjectionManager::initialize();
@@ -186,7 +199,7 @@ void onKeyboardInput(int message, int keyCode) {
   }
 }
 
-std::shared_ptr<BaseMod> getModByName(const std::string &name) {
+std::shared_ptr<Mod> getModByName(const std::string &name) {
   return loadedMods[name];
 }
 } // namespace ScriptingLibrary

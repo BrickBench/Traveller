@@ -1,4 +1,5 @@
 #include "GuiManager.h"
+#include "LuaMod.h"
 #include "ScriptingLibrary.h"
 #include "imgui.h"
 #include "nurender.h"
@@ -191,11 +192,11 @@ struct GameConsole {
     if (str == "clear" || str == "cls") {
       ClearLog();
     } else if (str == "fennel") {
-      CoreMod::useFennelInterpreter = true;
+      LuaMod::useFennelInterpreter = true;
     } else if (str == "lua") {
-      CoreMod::useFennelInterpreter = false;
+      LuaMod::useFennelInterpreter = false;
     } else {
-      CoreMod::execScript(str);
+      static_pointer_cast<LuaMod>(ScriptingLibrary::getModByName("LuaScript"))->execScript(str);
     }
 
     ScrollToBottom = true;
@@ -286,7 +287,6 @@ struct GameConsole {
 };
 
 GameConsole console;
-static bool started = false;
 static bool enableMouse = false;
 
 WNDPROC lastProc;
@@ -297,9 +297,6 @@ TRAVELLER_REGISTER_RAW_FUNCTION(0x6d5990, char *, ReadKey, void);
 char *_fastcall stubReadKey(void *thisValue) { return emptyKeyState; }
 
 void Gui::initializeImGui() {
-  if (started)
-    return;
-
   MH_CreateHook((LPVOID)ReadKey, (LPVOID)&stubReadKey, nullptr);
 
   ScriptingLibrary::log("Initializing ImGui");
@@ -319,12 +316,13 @@ void Gui::initializeImGui() {
       *_HWND, GWL_WNDPROC, reinterpret_cast<LONG_PTR>(&WndProc)));
 
   ScriptingLibrary::log("Initialized ImGui");
-
-  started = true;
 }
 
 void Gui::writeToConsole(const std::string &value) { console.AddLog(value); }
 
+static bool leftClick = false;
+static bool rightClick = false;
+static POINT pos;
 void Gui::startRender(int width, int height) {
 
   ImGui_ImplDX9_NewFrame();
@@ -332,18 +330,36 @@ void Gui::startRender(int width, int height) {
 
   auto io = ImGui::GetIO();
 
-  POINT pos;
-  if (::GetCursorPos(&pos) && ::ScreenToClient(*_HWND, &pos)) {
-    io.MousePos = ImVec2(pos.x, pos.y);
+  POINT newPos;
+  if (::GetCursorPos(&newPos) && ::ScreenToClient(*_HWND, &newPos)) {
+    if (newPos.x != pos.x || newPos.y != pos.y) {
+      pos = newPos;
+      io.AddMousePosEvent(pos.x, pos.y);   
+    } 
+  } else {
+    io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
+  }
+
+  bool newLeftClick = GetAsyncKeyState(0x01);
+  bool newRightClick = GetAsyncKeyState(0x02);
+
+  if (newLeftClick != leftClick) { 
+    io.AddMouseButtonEvent(0, newLeftClick);
+    leftClick = newLeftClick;
+  }
+
+  if (newRightClick != rightClick) {
+    io.AddMouseButtonEvent(1, newRightClick);
+    rightClick = newRightClick;
   }
 
   ImGui::NewFrame();
 
   ImGui::GetMainViewport()->Size = ImVec2(width, height);
   ImGui::GetMainViewport()->Pos = ImVec2(0, 0);
-
+  
   if (showConsole) {
-    ImGui::SetNextWindowPos(ImVec2(20, 20));
+    ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_Always);
     console.Draw("Console", &showConsole);
   }
 }
@@ -355,8 +371,6 @@ void Gui::endRender() {
 
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
   auto io = ImGui::GetIO();
-
-  ScriptingLibrary::log(std::to_string(msg));
 
   if (msg == WM_KEYDOWN && wParam == VK_F9) {
     enableMouse = !enableMouse;
@@ -382,13 +396,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     return true;
   }
 
-  if (msg >= WM_MOUSEFIRST && msg <= WM_MOUSELAST) {
-  
-    ScriptingLibrary::log("here?");
-  }
-
   if (msg >= WM_MOUSEFIRST && msg <= WM_MOUSELAST && io.WantCaptureMouse) {
-    ScriptingLibrary::log("Here!");
     return true;
   }
 

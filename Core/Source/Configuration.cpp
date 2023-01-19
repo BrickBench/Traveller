@@ -1,8 +1,9 @@
 #include "Configuration.h"
+#include "pch.h"
 
 namespace fs = std::filesystem;
 std::shared_ptr<Configuration>
-Configuration::getByName(const std::string &name,
+TTSLLib Configuration::getByName(const std::string &name,
                          const ini::parsed_data &defaults) {
   fs::create_directory("config");
   auto path = fs::path{"config/" + name};
@@ -32,16 +33,16 @@ Configuration::getByName(const std::string &name,
   return std::make_shared<Configuration>(std::move(parser));
 }
 
-std::string Configuration::getEntry(const std::string &section,
+TTSLLib std::string Configuration::getEntry(const std::string &section,
                                     const std::string &name) {
   return this->parser->get_parsed_data().at(section).at(name);
 }
 
-void Configuration::addSection(const std::string &section) {
+TTSLLib void Configuration::addSection(const std::string &section) {
   this->parser->get_parsed_data()[section] = {};
 }
 
-void Configuration::addEntry(const std::string &section,
+TTSLLib void Configuration::addEntry(const std::string &section,
                              const std::string &entry,
                              const std::string &value) {
   this->parser->get_parsed_data()[section][entry] = value;
