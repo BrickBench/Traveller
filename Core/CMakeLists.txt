@@ -7,7 +7,7 @@ set(TRAVELLER_SOURCE_FILES
 	"${CMAKE_CURRENT_SOURCE_DIR}/Source/InjectionManager.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/Source/InputHandler.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/Source/MemWriteUtils.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/Source/ScriptingLibrary.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/Source/Traveller.cpp"
  "${CMAKE_CURRENT_SOURCE_DIR}/Source/Configuration.cpp"
  "${CMAKE_CURRENT_SOURCE_DIR}/Source/LuaRegistry.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/Source/DINPUT8.def"

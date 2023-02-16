@@ -11,10 +11,13 @@
 
 // add headers that you want to pre-compile here
 #include "framework.h"
+#include <string>
 #ifdef TTSLLibBuild
 #define TTSLLib __declspec(dllexport)
 #else
 #define TTSLLib __declspec(dllimport)
 #endif
 
+constexpr int MOD_VERSION = 0;
+const std::string VERSION_STRING = "v0.1";
 #endif // PCH_H

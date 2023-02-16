@@ -51,7 +51,7 @@ set(TRAVELLER_SOURCE_FILES
 	"${CMAKE_CURRENT_SOURCE_DIR}/InjectionManager.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/InputHandler.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/MemWriteUtils.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/ScriptingLibrary.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/Traveller.cpp"
  "${CMAKE_CURRENT_SOURCE_DIR}/Configuration.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/DINPUT8.def"
 	"${CMAKE_SOURCE_DIR}/ThirdParty/imgui/backends/imgui_impl_dx9.cpp"

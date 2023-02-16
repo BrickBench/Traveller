@@ -1,6 +1,6 @@
 
 #include "LuaRegistry.h"
-#include "ScriptingLibrary.h"
+#include "Traveller.h"
 #include "LuaMod.h"
 #include "nuworld.h"
 #include <filesystem>
@@ -13,7 +13,7 @@
 std::map<std::string, std::unique_ptr<sol::table>> loadLuaScripts() {
   lua.script("mods = {}");
 
-  ScriptingLibrary::log("Loading scripts");
+  Traveller::log("Loading scripts");
   std::filesystem::create_directory("modscripts");
 
   std::map<std::string, std::unique_ptr<sol::table>> scripts;
@@ -31,14 +31,14 @@ std::map<std::string, std::unique_ptr<sol::table>> loadLuaScripts() {
                      dirEntry.path().stem().string();
       std::ranges::replace(luaFile, '\\', '/');
 
-      ScriptingLibrary::log("Loading script " + file);
+      Traveller::log("Loading script " + file);
       auto result = lua.safe_script("mods." + dirEntry.path().stem().string() +
                                     " = require(\"" + luaFile + "\")");
-      ScriptingLibrary::log(
+      Traveller::log(
           std::to_string(static_cast<int>(result.get_type())));
       if (!result.valid()) {
         sol::error err = result;
-        ScriptingLibrary::log("Failed to execute script " + file + ": " +
+        Traveller::log("Failed to execute script " + file + ": " +
                               std::string(err.what()));
       } else {
         auto resultObject = lua["mods"][name];
@@ -48,13 +48,13 @@ std::map<std::string, std::unique_ptr<sol::table>> loadLuaScripts() {
           scripts[dirEntry.path().string()] =
               std::make_unique<sol::table>(resultTable);
         } else {
-          ScriptingLibrary::log("Script " + file + " did not return a table");
+          Traveller::log("Script " + file + " did not return a table");
         }
       }
     }
   }
 
-  ScriptingLibrary::log("Loaded " + std::to_string(scripts.size()) +
+  Traveller::log("Loaded " + std::to_string(scripts.size()) +
                         " scripts");
 
   return scripts;
@@ -66,7 +66,7 @@ void LuaMod::runScript(const std::string &name, const std::string &func) {
     auto result = namespac[func].get<sol::safe_function>()();
     if (!result.valid()) {
       sol::error err = result;
-      ScriptingLibrary::log("Failed to execute script " + name + ": " +
+      Traveller::log("Failed to execute script " + name + ": " +
                             std::string(err.what()));
     }
   }
@@ -89,7 +89,7 @@ void registerTypes() {
 Configuration::ConfigurationData LuaMod::getDefaultConfiguration() {
   return  {
     {"scripting",
-      {{"enableScripting", "true"}, {"loadFennel", "true"}}}
+      {{"enableScripting", "true"}, {"loadFennel", "false"}}}
   };
 }
 
@@ -111,7 +111,7 @@ void LuaMod::earlyInit() {
   }
 
   for (auto &[name, script] : loadedScripts) {
-    ScriptingLibrary::currentModule = name;
+    Traveller::currentModule = name;
     runScript(name, "earlyInit");
   }
 }
@@ -119,28 +119,28 @@ void LuaMod::earlyInit() {
 
 void LuaMod::lateInit() {
   for (auto &[name, script] : loadedScripts) {
-    ScriptingLibrary::currentModule = name;
+    Traveller::currentModule = name;
     runScript(name, "lateInit");
   }
 }
 
 void LuaMod::earlyUpdate(double delta) {
   for (auto &[name, script] : loadedScripts) {
-    ScriptingLibrary::currentModule = name;
+    Traveller::currentModule = name;
     runScript(name, "earlyUpdate");
   }
 }
 
 void LuaMod::earlyRender() {
   for (auto &[name, script] : loadedScripts) {
-    ScriptingLibrary::currentModule = name;
+    Traveller::currentModule = name;
     runScript(name, "earlyRender");
   }
 }
 
 void LuaMod::lateRender() {
   for (auto &[name, script] : loadedScripts) {
-    ScriptingLibrary::currentModule = name;
+    Traveller::currentModule = name;
     runScript(name, "lateRender");
   }
 }
@@ -160,7 +160,7 @@ void LuaMod::execScript(const std::string &script) {
 
   if (!result.valid()) {
     sol::error err = result;
-    ScriptingLibrary::log("Failed to execute script: " +
+    Traveller::log("Failed to execute script: " +
                           std::string(err.what()));
   } else {
     lua.script("log(tostring(_scriptResult))");

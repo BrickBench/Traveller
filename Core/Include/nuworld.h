@@ -80,6 +80,9 @@ TRAVELLER_REGISTER_RAW_GLOBAL(0x00951ba4, int, _LDataListSize_);
 TRAVELLER_REGISTER_RAW_GLOBAL(0x00951b98, LEVELDATA_s*, _LDataList);
 TRAVELLER_REGISTER_RAW_GLOBAL(0x00951ba0, LEVELDATA_s*, _NextLevel);
 TRAVELLER_REGISTER_RAW_GLOBAL(0x0093d870, bool, _ChangeLevel);
+TRAVELLER_REGISTER_RAW_GLOBAL(0x009513d8, char, _ResetDoorBit);
+TRAVELLER_REGISTER_RAW_GLOBAL(0x00803784, int32_t, _ResetBit1);
+TRAVELLER_REGISTER_RAW_GLOBAL(0x0093b2cc, uint32_t, _ResetBit2);
 
 TRAVELLER_REGISTER_RAW_FUNCTION_CUSTOM_CONVENTION(0x43d890, __cdecl, GameObject_s* , AddDynamicCreature, 
                                 uint32_t, nuvec_s*, int, const char*, int*, int*, int, short*, float*, int, int);

@@ -1,6 +1,6 @@
 #include "GuiManager.h"
 #include "LuaMod.h"
-#include "ScriptingLibrary.h"
+#include "Traveller.h"
 #include "imgui.h"
 #include "nurender.h"
 #include "pch.h"
@@ -196,7 +196,7 @@ struct GameConsole {
     } else if (str == "lua") {
       LuaMod::useFennelInterpreter = false;
     } else {
-      static_pointer_cast<LuaMod>(ScriptingLibrary::getModByName("LuaScript"))->execScript(str);
+      static_pointer_cast<LuaMod>(Traveller::getModByName("LuaScript"))->execScript(str);
     }
 
     ScrollToBottom = true;
@@ -299,7 +299,7 @@ char *_fastcall stubReadKey(void *thisValue) { return emptyKeyState; }
 void Gui::initializeImGui() {
   MH_CreateHook((LPVOID)ReadKey, (LPVOID)&stubReadKey, nullptr);
 
-  ScriptingLibrary::log("Initializing ImGui");
+  Traveller::log("Initializing ImGui");
   auto d3d9Device = reinterpret_cast<IDirect3DDevice9 **>(0x029765ec);
 
   ImGui::CreateContext();
@@ -315,7 +315,11 @@ void Gui::initializeImGui() {
   lastProc = reinterpret_cast<WNDPROC>(SetWindowLongPtr(
       *_HWND, GWL_WNDPROC, reinterpret_cast<LONG_PTR>(&WndProc)));
 
-  ScriptingLibrary::log("Initialized ImGui");
+  for (auto& [name, mod] : Traveller::getMods()) {
+    mod->configureEnvironment(ImGui::GetCurrentContext());
+  }
+
+  Traveller::log("Initialized ImGui");
 }
 
 void Gui::writeToConsole(const std::string &value) { console.AddLog(value); }
@@ -401,7 +405,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
   }
 
   if (msg == WM_KEYDOWN || msg == WM_KEYUP) {
-    ScriptingLibrary::onKeyboardInput(msg, wParam);
+    Traveller::onKeyboardInput(msg, wParam);
 
     if (msg == WM_KEYDOWN && wParam == VK_F8) {
       showConsole = !showConsole;

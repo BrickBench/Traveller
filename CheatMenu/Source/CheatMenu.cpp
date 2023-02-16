@@ -1,12 +1,12 @@
-#include "MemWriteUtils.h"
-#include "nuworld.h"
 #include "pch.h"
 
 #include <imgui.h>
 
 #include "Mod.h"
+#include "MemWriteUtils.h"
+#include "nuworld.h"
 #include "UIUtils.h"
-#include "ScriptingLibrary.h"
+#include "Traveller.h"
 
 class CheatMenu : public Mod {
 private:
@@ -14,6 +14,8 @@ private:
    
   bool drawCheatWindow = false;
   bool drawDebugWindow = false;
+
+  bool skipGameCuts = false;
  
   bool enableLevelLoadHotkey = false;
   LEVELDATA_s* currentLevel = nullptr;
@@ -25,6 +27,9 @@ private:
   int spawnId;
   std::string spawnScript;
 
+  bool resetDoor;
+  bool resetLevel;
+
 public:
   std::string getName() override { return "CheatMenu"; }
 
@@ -33,7 +38,7 @@ public:
       {
         "cheats",
         {
-          {"skipIntro", "true"}
+          {"skipIntro", "true"},
         }
       }
     };
@@ -41,12 +46,16 @@ public:
 
   void earlyInit() override {
     if (this->getConfiguration()->getEntry("cheats", "skipIntro") == "true") {
-      MemWriteUtils::writeSafeUncheckedPtr(0x87B53C, 1);
+     // MemWriteUtils::writeSafeUncheckedPtr(0x87B53C, 1);
     }
   }
 
   void lateInit() override {
+    //MemWriteUtils::writeSafeUncheckedPtr(0x87B53C, 0);
     areas = getLoadedAreas();
+  }
+
+  void earlyUpdate(double delta) override {
   }
 
   
@@ -74,7 +83,19 @@ public:
           ImGui::EndListBox();
         }
 
+        ImGui::Checkbox("Reset door", &resetDoor);
+        ImGui::Checkbox("Reset level state", &resetLevel);
+
         if (ImGui::Button("Go to level") && currentLevel != nullptr) {
+          if (resetDoor) {
+            *_ResetDoorBit = 0;
+          }
+
+          if (resetLevel) {
+            *_ResetBit1 = -1;
+            *_ResetBit2 = 32;
+          }
+
           *_NextLevel = currentLevel;
           *_ChangeLevel = true;
         }
@@ -174,4 +195,4 @@ public:
   }
 };
 
-extern "C" TTSLModExport Mod *getModInstance() { return new CheatMenu(); }
+extern "C" __declspec(dllexport) Mod *getModInstance() { return new CheatMenu(); }

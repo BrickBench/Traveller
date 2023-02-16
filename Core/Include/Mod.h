@@ -8,11 +8,11 @@
 #define TTSLModExport __declspec(dllexport)
 #endif
 
+#include "pch.h"
 #include "Configuration.h"
 #include <memory>
 #include <string>
 
-constexpr int MOD_VERSION = 0;
 
 /// <summary>
 /// Base class for a user defined mod.
@@ -24,7 +24,7 @@ private:
 public:
   virtual ~Mod() = default;
 
-  void configureEnvironment(ImGuiContext *context) {
+  virtual void configureEnvironment(ImGuiContext *context) {
     ImGui::SetCurrentContext(context);
   }
 

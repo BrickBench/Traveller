@@ -9,7 +9,7 @@
 #include <iostream>
 #include <tchar.h>
 
-#include "ScriptingLibrary.h"
+#include "Traveller.h"
 
 HMODULE dinput8;
 FARPROC dinput8_create;
@@ -76,7 +76,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call,
   switch (ul_reason_for_call) {
   case DLL_PROCESS_ATTACH:
     initializeDllProxy();
-    InjectionManager::injectFunction<&ScriptingLibrary::init, 0x00401230,
+    InjectionManager::injectFunction<&Traveller::init, 0x00401230,
                                      0x00428b90>();
   case DLL_THREAD_ATTACH:
   case DLL_THREAD_DETACH:

@@ -1,6 +1,7 @@
 #include "CoreMod.h"
 
 #include <bits/chrono.h>
+#include <cctype>
 #include <chrono>
 #include <d3d9.h>
 #include <dinput.h>
@@ -18,7 +19,7 @@
 #include "InjectionManager.h"
 #include "LuaRegistry.h"
 #include "MinHook.h"
-#include "ScriptingLibrary.h"
+#include "Traveller.h"
 #include "imgui.h"
 #include "misc/cpp/imgui_stdlib.h"
 #include "nudebug.h"
@@ -26,6 +27,7 @@
 #include "nurender.h"
 #include "nuutil.h"
 #include "nuworld.h"
+#include "pch.h"
 
 TRAVELLER_REGISTER_RAW_FUNCTION(0x6d57d0, DIMOUSESTATE2 *, ReadMouse, void);
 TRAVELLER_REGISTER_RAW_FUNCTION(0x6e57d0, int, _d3dShowCursor, int);
@@ -149,7 +151,7 @@ void CoreMod::earlyInit() {
   if (this->getConfiguration()->getEntry("render", "useCustomShader") == "true") {
     auto shaderFile = this->getConfiguration()->getEntry("render", "customShaderFile");
 
-    ScriptingLibrary::log("Reading " + shaderFile);
+    Traveller::log("Reading " + shaderFile);
 
     std::streampos size;
     char *memblock;
@@ -164,14 +166,14 @@ void CoreMod::earlyInit() {
       file.close();
       MemWriteUtils::writeSafeUncheckedPtr(0x00746158, (uint32_t)size);
       MemWriteUtils::writeSafeUncheckedPtr(0x0074615D, (uint32_t)memblock);
-      ScriptingLibrary::log("Successfully patched in " + shaderFile);
+      Traveller::log("Successfully patched in " + shaderFile);
     } else {
-      ScriptingLibrary::log(
+      Traveller::log(
           "Could not find shader file! Skipping shader patch.");
     }
   }
 
-  ScriptingLibrary::log("Initialized CoreMod");
+  Traveller::log("Initialized CoreMod");
 }
 
 
@@ -189,7 +191,24 @@ void CoreMod::lateRender() {
 static bool drawDebugWindow = false;
 static std::chrono::system_clock::time_point lastTime = std::chrono::system_clock::now();
 
+std::string toLower(std::string s) {
+  std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) {
+                   return std::tolower(c);
+                 });
+  return s;
+}
+
 void CoreMod::drawUI() {
+  auto world = getCurrentWorld();
+
+  if (world != nullptr && toLower(std::string(world->name)).ends_with("titles")) {
+    ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(120, 20), ImGuiCond_Always);
+    ImGui::Begin("##splash", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);
+    ImGui::Text("Traveller %s", VERSION_STRING.c_str());
+    ImGui::End();
+  }
+
   if (drawDebugWindow) {
     ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_Always);
     ImGui::Begin("Debug");
@@ -204,7 +223,6 @@ void CoreMod::drawUI() {
     ImGui::Text("Frame time: %.4f ms, Frame rate: %f", nanosTime/1e6, frameRate);
 
     ImGui::Separator();
-    auto world = getCurrentWorld();
     if (ImGui::TreeNode("Characters")) {
       if (world != nullptr && getCharacterSys(world) != nullptr) {
         auto characters = getCharactersFromSys(getCharacterSys(world));
