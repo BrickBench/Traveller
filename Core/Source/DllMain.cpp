@@ -19,23 +19,23 @@ FARPROC dinput8_register;
 FARPROC dinput8_unregister;
 
 #ifdef _MSC_VER
-void __stdcall jumpDirectInput8Create() {
+__declspec(naked) void __stdcall jumpDirectInput8Create() {
   _asm {jmp dinput8_create}
 }
 
-void __stdcall jumpDllCanUnloadNow() {
+__declspec(naked) void __stdcall jumpDllCanUnloadNow() {
   _asm {jmp dinput8_unload}
 }
 
-void __stdcall jumpDllGetClassObject() {
+__declspec(naked) void __stdcall jumpDllGetClassObject() {
   _asm {jmp dinput8_get_class}
 }
 
-void __stdcall jumpDllRegisterServer() {
+__declspec(naked) void __stdcall jumpDllRegisterServer() {
   _asm {jmp dinput8_register}
 }
 
-void __stdcall jumpDllUnregisterServer() {
+__declspec(naked) void __stdcall jumpDllUnregisterServer() {
   _asm {jmp dinput8_unregister}
 }
 #else
