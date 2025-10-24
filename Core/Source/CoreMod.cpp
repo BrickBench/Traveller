@@ -1,6 +1,5 @@
 #include "CoreMod.h"
 
-#include <bits/chrono.h>
 #include <cctype>
 #include <chrono>
 #include <d3d9.h>
@@ -54,7 +53,7 @@ static int windowHeight;
 static int windowXPos;
 static int windowYPos;
 
-__stdcall int patchModes() {
+int __stdcall patchModes() {
   void *d3dCore = reinterpret_cast<void *>(0x29765e8);
   int oldModeCount =
       *reinterpret_cast<int *>(reinterpret_cast<int>(d3dCore) + 0x618);
